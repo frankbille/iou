@@ -1,0 +1,109 @@
+# =========================================================
+# Money
+# =========================================================
+
+"""
+Represents the denomination used for balances in the family.
+Supports both ISO currencies and custom token systems.
+"""
+type Currency {
+    code: String!
+    name: String!
+    symbol: String!
+    position: CurrencyPosition!
+    minorUnit: Int!
+    kind: CurrencyKind!
+}
+
+enum CurrencyPosition {
+    PREFIX
+    SUFFIX
+}
+
+enum CurrencyKind {
+    ISO_CURRENCY
+    CUSTOM
+}
+
+input CurrencyInput {
+    code: String!
+    name: String!
+    symbol: String!
+    position: CurrencyPosition!
+    minorUnit: Int!
+    kind: CurrencyKind!
+}
+
+"""
+Money is represented in the smallest unit (minor units).
+Example: 5.25 -> 525
+"""
+type Money {
+    amountMinor: Int!
+}
+
+"""
+Represents a physical or conceptual location where money is stored.
+Examples: cash drawer, parent bank account, piggy bank.
+"""
+type MoneyAccount {
+    id: ID!
+    name: String!
+    kind: MoneyAccountKind!
+    family: Family!
+
+    """
+    Derived balance of this account calculated from ledger transactions.
+    This is a computed projection, not a stored column.
+    """
+    balance: Money!
+}
+
+input CreateMoneyAccountInput {
+    familyId: ID!
+    name: String!
+    kind: MoneyAccountKind!
+}
+
+type CreateMoneyAccountPayload {
+    moneyAccount: MoneyAccount!
+}
+
+input UpdateMoneyAccountInput {
+    moneyAccountId: ID!
+    name: String!
+    kind: MoneyAccountKind!
+}
+
+type UpdateMoneyAccountPayload {
+    moneyAccount: MoneyAccount!
+}
+
+input DeleteMoneyAccountInput {
+    moneyAccountId: ID!
+}
+
+type DeleteMoneyAccountPayload {
+    deletedMoneyAccountId: ID!
+}
+
+type MoneyAccountChangedEvent {
+    moneyAccount: MoneyAccount!
+}
+
+type MoneyAccountDeletedEvent {
+    deletedMoneyAccountId: ID!
+}
+
+enum MoneyAccountKind {
+    CASH
+    BANK
+    SAVINGS
+    CUSTOM
+}
+
+extend type Mutation {
+    createMoneyAccount(input: CreateMoneyAccountInput!): CreateMoneyAccountPayload!
+    updateMoneyAccount(input: UpdateMoneyAccountInput!): UpdateMoneyAccountPayload!
+    deleteMoneyAccount(input: DeleteMoneyAccountInput!): DeleteMoneyAccountPayload!
+}

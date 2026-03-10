@@ -1,0 +1,163 @@
+# =========================================================
+# Transactions / ledger
+# =========================================================
+
+enum AdjustmentReason {
+    INITIAL_BALANCE
+    MANUAL_ADD
+    MANUAL_REMOVE
+}
+
+"""
+Ledger entry representing money movement.
+All transaction variants share a common base contract.
+"""
+interface Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+}
+
+"""
+Adds money to a child, optionally linked to the task completion that earned it.
+"""
+type RewardTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    toAccount: MoneyAccount!
+    taskCompletion: TaskCompletion!
+}
+
+"""
+Moves money for a child from one account to another.
+"""
+type TransferTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    fromAccount: MoneyAccount!
+    toAccount: MoneyAccount!
+}
+
+"""
+Adjusts a child's balance manually.
+Useful for corrections, starting balances, or exceptional changes.
+The amount is always positive, and the balance direction is determined by `reason`.
+`INITIAL_BALANCE` and `MANUAL_ADD` increase the balance, while `MANUAL_REMOVE` decreases it.
+"""
+type AdjustmentTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    account: MoneyAccount!
+    reason: AdjustmentReason!
+}
+
+"""
+Removes money from a child's account because it was spent or taken out.
+"""
+type WithdrawalTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    fromAccount: MoneyAccount!
+}
+
+"""
+Adds money into a child's account from outside the tracked system.
+"""
+type DepositTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    toAccount: MoneyAccount!
+}
+
+input RecordDepositInput {
+    familyId: ID!
+    childId: ID!
+    toAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordDepositPayload {
+    transaction: DepositTransaction!
+}
+
+input RecordWithdrawalInput {
+    familyId: ID!
+    childId: ID!
+    fromAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordWithdrawalPayload {
+    transaction: WithdrawalTransaction!
+}
+
+input RecordTransferInput {
+    familyId: ID!
+    childId: ID!
+    fromAccountId: ID!
+    toAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordTransferPayload {
+    transaction: TransferTransaction!
+}
+
+input RecordAdjustmentInput {
+    familyId: ID!
+    childId: ID!
+    accountId: ID!
+    amountMinor: Int!
+    reason: AdjustmentReason!
+    description: String
+}
+
+type RecordAdjustmentPayload {
+    transaction: AdjustmentTransaction!
+}
+
+type TransactionRecordedEvent {
+    transaction: Transaction!
+}
+
+extend type Mutation {
+    recordDeposit(input: RecordDepositInput!): RecordDepositPayload!
+    recordWithdrawal(input: RecordWithdrawalInput!): RecordWithdrawalPayload!
+    recordTransfer(input: RecordTransferInput!): RecordTransferPayload!
+    recordAdjustment(input: RecordAdjustmentInput!): RecordAdjustmentPayload!
+}
