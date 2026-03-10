@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.graphql.java.extended.scalars)
 
     implementation(projects.shared)
 
