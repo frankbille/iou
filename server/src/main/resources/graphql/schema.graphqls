@@ -1,0 +1,937 @@
+scalar Date @specifiedBy(url: "https://tools.ietf.org/html/rfc3339")
+scalar DateTime @specifiedBy(url: "https://scalars.graphql.org/andimarek/date-time.html")
+
+type Query {
+    viewer: Viewer
+}
+
+type Mutation {
+    createFamily(input: CreateFamilyInput!): CreateFamilyPayload!
+    updateFamily(input: UpdateFamilyInput!): UpdateFamilyPayload!
+    deleteFamily(input: DeleteFamilyInput!): DeleteFamilyPayload!
+
+    inviteParentToFamily(input: InviteParentToFamilyInput!): InviteParentToFamilyPayload!
+    revokeParentInvitation(input: RevokeParentInvitationInput!): RevokeParentInvitationPayload!
+    updateFamilyParent(input: UpdateFamilyParentInput!): UpdateFamilyParentPayload!
+    removeParentFromFamily(input: RemoveParentFromFamilyInput!): RemoveParentFromFamilyPayload!
+
+    addChildToFamily(input: AddChildToFamilyInput!): AddChildToFamilyPayload!
+    updateFamilyChild(input: UpdateFamilyChildInput!): UpdateFamilyChildPayload!
+    removeChildFromFamily(input: RemoveChildFromFamilyInput!): RemoveChildFromFamilyPayload!
+
+    createMoneyAccount(input: CreateMoneyAccountInput!): CreateMoneyAccountPayload!
+    updateMoneyAccount(input: UpdateMoneyAccountInput!): UpdateMoneyAccountPayload!
+    deleteMoneyAccount(input: DeleteMoneyAccountInput!): DeleteMoneyAccountPayload!
+
+    recordDeposit(input: RecordDepositInput!): RecordDepositPayload!
+    recordWithdrawal(input: RecordWithdrawalInput!): RecordWithdrawalPayload!
+    recordTransfer(input: RecordTransferInput!): RecordTransferPayload!
+    recordAdjustment(input: RecordAdjustmentInput!): RecordAdjustmentPayload!
+
+    createTaskCategory(input: CreateTaskCategoryInput!): CreateTaskCategoryPayload!
+    updateTaskCategory(input: UpdateTaskCategoryInput!): UpdateTaskCategoryPayload!
+    deleteTaskCategory(input: DeleteTaskCategoryInput!): DeleteTaskCategoryPayload!
+
+    createRecurringTask(input: CreateRecurringTaskInput!): CreateRecurringTaskPayload!
+    updateRecurringTask(input: UpdateRecurringTaskInput!): UpdateRecurringTaskPayload!
+    archiveRecurringTask(input: ArchiveRecurringTaskInput!): ArchiveRecurringTaskPayload!
+    deleteRecurringTask(input: DeleteRecurringTaskInput!): DeleteRecurringTaskPayload!
+
+    createOneOffTask(input: CreateOneOffTaskInput!): CreateOneOffTaskPayload!
+    updateOneOffTask(input: UpdateOneOffTaskInput!): UpdateOneOffTaskPayload!
+    deleteOneOffTask(input: DeleteOneOffTaskInput!): DeleteOneOffTaskPayload!
+
+    completeOneOffTask(input: CompleteOneOffTaskInput!): CompleteOneOffTaskPayload!
+    approveOneOffTask(input: ApproveOneOffTaskInput!): ApproveOneOffTaskPayload!
+    resetOneOffTaskToAvailable(input: ResetOneOffTaskToAvailableInput!): ResetOneOffTaskToAvailablePayload!
+
+    completeRecurringTask(input: CompleteRecurringTaskInput!): CompleteRecurringTaskPayload!
+    approveRecurringTaskCompletion(input: ApproveRecurringTaskCompletionInput!): ApproveRecurringTaskCompletionPayload!
+    resetRecurringTaskCompletionToAvailable(input: ResetRecurringTaskCompletionToAvailableInput!): ResetRecurringTaskCompletionToAvailablePayload!
+}
+
+type Subscription {
+    familyEvents(familyId: ID!): FamilyEvent!
+}
+
+union FamilyEvent =
+    FamilyUpdatedEvent
+    | FamilyDeletedEvent
+    | ParentInvitationChangedEvent
+    | FamilyParentChangedEvent
+    | FamilyParentRemovedEvent
+    | FamilyChildChangedEvent
+    | FamilyChildRemovedEvent
+    | MoneyAccountChangedEvent
+    | MoneyAccountDeletedEvent
+    | TaskCategoryChangedEvent
+    | TaskCategoryDeletedEvent
+    | OneOffTaskChangedEvent
+    | OneOffTaskDeletedEvent
+    | RecurringTaskChangedEvent
+    | RecurringTaskDeletedEvent
+    | RecurringTaskCompletionChangedEvent
+    | TransactionRecordedEvent
+
+type Viewer {
+    person: Person!
+    families: [Family!]!
+}
+
+# =========================================================
+# Family and people
+# =========================================================
+
+"""
+A family represents the top-level container for all data.
+All money inside a family uses the same currency.
+"""
+type Family {
+    id: ID!
+    name: String!
+    currency: Currency!
+    defaultRewardAccount: MoneyAccount!
+    recurringTaskCompletionGracePeriodDays: Int!
+
+    parents: [FamilyParent!]!
+    children: [FamilyChild!]!
+    parentInvitations: [ParentInvitation!]!
+
+    moneyAccounts: [MoneyAccount!]!
+    taskCategories: [TaskCategory!]!
+    tasks: [Task!]!
+}
+
+interface Person {
+    id: ID!
+}
+
+type Parent implements Person {
+    id: ID!
+    name: String!
+}
+
+type Child implements Person {
+    id: ID!
+    name: String!
+
+    """
+    Derived balance across all ledger transactions for the child.
+    This is a computed projection, not a stored column.
+    """
+    balance: Money!
+
+    transactions: [Transaction!]!
+}
+
+"""
+Join type connecting parents to families.
+"""
+type FamilyParent {
+    id: ID!
+    family: Family!
+    parent: Parent!
+
+    """
+    Descriptive relationship label between the parent and the family.
+
+    This is intentionally free text to support a wide variety of
+    family structures (e.g. mom, dad, stepmom, guardian, etc.).
+    The system does not attempt to enforce or standardize these
+    relationship types.
+    """
+    relation: String!
+}
+
+"""
+Join type connecting children to families.
+"""
+type FamilyChild {
+    id: ID!
+    family: Family!
+    child: Child!
+
+    """
+    Descriptive relationship label between the child and the family.
+
+    This is intentionally free text and has no behavioral meaning in
+    the domain model. UIs may provide suggestions, but the backend
+    does not restrict possible values.
+    """
+    relation: String!
+
+    """
+    Optional family-scoped override for how rewards are paid out for this child.
+    If null, the task's payout policy applies.
+    """
+    rewardPayoutPolicyOverride: RewardPayoutPolicy
+}
+
+type ParentInvitation {
+    id: ID!
+    family: Family!
+    invitedBy: Parent!
+    email: String!
+    status: ParentInvitationStatus!
+    createdAt: DateTime!
+    acceptedAt: DateTime
+    expiresAt: DateTime
+    parent: Parent
+}
+
+enum ParentInvitationStatus {
+    PENDING
+    ACCEPTED
+    REVOKED
+    EXPIRED
+}
+
+input InviteParentToFamilyInput {
+    familyId: ID!
+    email: String!
+}
+
+type InviteParentToFamilyPayload {
+    invitation: ParentInvitation!
+}
+
+input RevokeParentInvitationInput {
+    invitationId: ID!
+}
+
+type RevokeParentInvitationPayload {
+    invitation: ParentInvitation!
+}
+
+type ParentInvitationChangedEvent {
+    invitation: ParentInvitation!
+}
+
+type FamilyParentChangedEvent {
+    familyParent: FamilyParent!
+}
+
+type FamilyParentRemovedEvent {
+    removedFamilyParentId: ID!
+}
+
+type FamilyChildChangedEvent {
+    familyChild: FamilyChild!
+}
+
+type FamilyChildRemovedEvent {
+    removedFamilyChildId: ID!
+}
+
+input UpdateFamilyParentInput {
+    familyParentId: ID!
+    relation: String!
+}
+
+type UpdateFamilyParentPayload {
+    familyParent: FamilyParent!
+}
+
+input RemoveParentFromFamilyInput {
+    familyParentId: ID!
+}
+
+type RemoveParentFromFamilyPayload {
+    removedFamilyParentId: ID!
+}
+
+input AddChildToFamilyInput {
+    familyId: ID!
+    name: String!
+    relation: String!
+    rewardPayoutPolicyOverride: RewardPayoutPolicy
+}
+
+type AddChildToFamilyPayload {
+    familyChild: FamilyChild!
+}
+
+input UpdateFamilyChildInput {
+    familyChildId: ID!
+    name: String!
+    relation: String!
+    rewardPayoutPolicyOverride: RewardPayoutPolicy
+}
+
+type UpdateFamilyChildPayload {
+    familyChild: FamilyChild!
+}
+
+input RemoveChildFromFamilyInput {
+    familyChildId: ID!
+}
+
+type RemoveChildFromFamilyPayload {
+    removedFamilyChildId: ID!
+}
+
+# =========================================================
+# Money
+# =========================================================
+
+"""
+Represents the denomination used for balances in the family.
+Supports both ISO currencies and custom token systems.
+"""
+type Currency {
+    code: String!
+    name: String!
+    symbol: String!
+    position: CurrencyPosition!
+    minorUnit: Int!
+    kind: CurrencyKind!
+}
+
+enum CurrencyPosition {
+    PREFIX
+    SUFFIX
+}
+
+enum CurrencyKind {
+    ISO_CURRENCY
+    CUSTOM
+}
+
+input CreateFamilyInput {
+    name: String!
+    currency: CurrencyInput!
+    defaultRewardAccountName: String!
+    defaultRewardAccountKind: MoneyAccountKind!
+    recurringTaskCompletionGracePeriodDays: Int!
+}
+
+type CreateFamilyPayload {
+    family: Family!
+}
+
+input UpdateFamilyInput {
+    familyId: ID!
+    name: String!
+    currency: CurrencyInput!
+    defaultRewardAccountId: ID!
+    recurringTaskCompletionGracePeriodDays: Int!
+}
+
+type UpdateFamilyPayload {
+    family: Family!
+}
+
+type FamilyUpdatedEvent {
+    family: Family!
+}
+
+type FamilyDeletedEvent {
+    deletedFamilyId: ID!
+}
+
+input DeleteFamilyInput {
+    familyId: ID!
+}
+
+type DeleteFamilyPayload {
+    deletedFamilyId: ID!
+}
+
+input CurrencyInput {
+    code: String!
+    name: String!
+    symbol: String!
+    position: CurrencyPosition!
+    minorUnit: Int!
+    kind: CurrencyKind!
+}
+
+"""
+Money is represented in the smallest unit (minor units).
+Example: 5.25 -> 525
+"""
+type Money {
+    amountMinor: Int!
+}
+
+"""
+Represents a physical or conceptual location where money is stored.
+Examples: cash drawer, parent bank account, piggy bank.
+"""
+type MoneyAccount {
+    id: ID!
+    name: String!
+    kind: MoneyAccountKind!
+    family: Family!
+
+    """
+    Derived balance of this account calculated from ledger transactions.
+    This is a computed projection, not a stored column.
+    """
+    balance: Money!
+}
+
+input CreateMoneyAccountInput {
+    familyId: ID!
+    name: String!
+    kind: MoneyAccountKind!
+}
+
+type CreateMoneyAccountPayload {
+    moneyAccount: MoneyAccount!
+}
+
+input UpdateMoneyAccountInput {
+    moneyAccountId: ID!
+    name: String!
+    kind: MoneyAccountKind!
+}
+
+type UpdateMoneyAccountPayload {
+    moneyAccount: MoneyAccount!
+}
+
+input DeleteMoneyAccountInput {
+    moneyAccountId: ID!
+}
+
+type DeleteMoneyAccountPayload {
+    deletedMoneyAccountId: ID!
+}
+
+type MoneyAccountChangedEvent {
+    moneyAccount: MoneyAccount!
+}
+
+type MoneyAccountDeletedEvent {
+    deletedMoneyAccountId: ID!
+}
+
+enum MoneyAccountKind {
+    CASH
+    BANK
+    SAVINGS
+    CUSTOM
+}
+
+# =========================================================
+# Tasks
+# =========================================================
+
+type TaskCategory {
+    id: ID!
+    name: String!
+    family: Family!
+}
+
+input CreateTaskCategoryInput {
+    familyId: ID!
+    name: String!
+}
+
+type CreateTaskCategoryPayload {
+    taskCategory: TaskCategory!
+}
+
+input UpdateTaskCategoryInput {
+    taskCategoryId: ID!
+    name: String!
+}
+
+type UpdateTaskCategoryPayload {
+    taskCategory: TaskCategory!
+}
+
+input DeleteTaskCategoryInput {
+    taskCategoryId: ID!
+}
+
+type DeleteTaskCategoryPayload {
+    deletedTaskCategoryId: ID!
+}
+
+type TaskCategoryChangedEvent {
+    taskCategory: TaskCategory!
+}
+
+type TaskCategoryDeletedEvent {
+    deletedTaskCategoryId: ID!
+}
+
+interface Task {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+
+    """
+    The children who are allowed to complete this task.
+
+    Null means the task is available to all children in the family.
+
+    An empty list is also valid and means no children are currently allowed
+    to complete the task. This may occur temporarily due to configuration
+    or UI behavior and is allowed by the data model even if the frontend
+    typically avoids creating this state.
+    """
+    eligibleChildren: [Child!]
+}
+
+enum RewardPayoutPolicy {
+    ON_COMPLETION
+    ON_APPROVAL
+}
+
+interface TaskCompletion {
+    """
+    The child who completed this task.
+
+    This is null while the task is still AVAILABLE and no child has
+    completed it yet.
+    """
+    child: Child
+
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+"""
+A one-off task is both the task definition and the thing that gets completed.
+"""
+type OneOffTask implements Task & TaskCompletion {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+    eligibleChildren: [Child!]
+
+    child: Child
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+input CreateOneOffTaskInput {
+    familyId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+}
+
+type CreateOneOffTaskPayload {
+    task: OneOffTask!
+}
+
+input UpdateOneOffTaskInput {
+    taskId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+}
+
+type UpdateOneOffTaskPayload {
+    task: OneOffTask!
+}
+
+input DeleteOneOffTaskInput {
+    taskId: ID!
+}
+
+type DeleteOneOffTaskPayload {
+    deletedTaskId: ID!
+}
+
+input CompleteOneOffTaskInput {
+    taskId: ID!
+    childId: ID!
+}
+
+type CompleteOneOffTaskPayload {
+    task: OneOffTask!
+    rewardTransaction: RewardTransaction
+}
+
+input ApproveOneOffTaskInput {
+    taskId: ID!
+}
+
+type ApproveOneOffTaskPayload {
+    task: OneOffTask!
+    rewardTransaction: RewardTransaction!
+}
+
+input ResetOneOffTaskToAvailableInput {
+    taskId: ID!
+}
+
+type ResetOneOffTaskToAvailablePayload {
+    task: OneOffTask!
+}
+
+type OneOffTaskChangedEvent {
+    task: OneOffTask!
+}
+
+type OneOffTaskDeletedEvent {
+    deletedTaskId: ID!
+}
+
+"""
+A recurring task is a reusable definition that produces separate completions.
+"""
+type RecurringTask implements Task {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+    eligibleChildren: [Child!]
+
+    status: RecurringTaskStatus!
+    recurrence: TaskRecurrence!
+    completions: [RecurringTaskCompletion!]!
+}
+
+input CreateRecurringTaskInput {
+    familyId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+    recurrence: TaskRecurrenceInput!
+}
+
+type CreateRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input UpdateRecurringTaskInput {
+    taskId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+    recurrence: TaskRecurrenceInput!
+}
+
+type UpdateRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input ArchiveRecurringTaskInput {
+    taskId: ID!
+}
+
+type ArchiveRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input DeleteRecurringTaskInput {
+    taskId: ID!
+}
+
+type DeleteRecurringTaskPayload {
+    deletedTaskId: ID!
+}
+
+type RecurringTaskChangedEvent {
+    task: RecurringTask!
+}
+
+type RecurringTaskDeletedEvent {
+    deletedTaskId: ID!
+}
+enum RecurringTaskStatus {
+    ACTIVE
+    ARCHIVED
+}
+
+"""
+Defines how often a recurring task becomes available.
+"""
+type TaskRecurrence {
+    kind: TaskRecurrenceKind!
+    interval: Int
+    daysOfWeek: [DayOfWeek!]
+    dayOfMonth: Int
+    startsOn: Date
+    endsOn: Date
+    maxCompletionsPerPeriod: Int
+}
+
+input TaskRecurrenceInput {
+    kind: TaskRecurrenceKind!
+    interval: Int
+    daysOfWeek: [DayOfWeek!]
+    dayOfMonth: Int
+    startsOn: Date
+    endsOn: Date
+    maxCompletionsPerPeriod: Int
+}
+
+enum TaskRecurrenceKind {
+    DAILY
+    WEEKLY
+    MONTHLY
+    CUSTOM
+}
+
+enum DayOfWeek {
+    MONDAY
+    TUESDAY
+    WEDNESDAY
+    THURSDAY
+    FRIDAY
+    SATURDAY
+    SUNDAY
+}
+
+"""
+A concrete completion of a recurring task.
+"""
+type RecurringTaskCompletion implements TaskCompletion {
+    id: ID!
+    task: RecurringTask!
+    child: Child!
+
+    """
+    The date identifying which recurrence period this completion belongs to.
+    """
+    occurrenceDate: Date!
+
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+input CompleteRecurringTaskInput {
+    taskId: ID!
+    childId: ID!
+    occurrenceDate: Date
+}
+
+type CompleteRecurringTaskPayload {
+    completion: RecurringTaskCompletion!
+    rewardTransaction: RewardTransaction
+}
+
+input ApproveRecurringTaskCompletionInput {
+    completionId: ID!
+}
+
+type ApproveRecurringTaskCompletionPayload {
+    completion: RecurringTaskCompletion!
+    rewardTransaction: RewardTransaction!
+}
+
+input ResetRecurringTaskCompletionToAvailableInput {
+    completionId: ID!
+}
+
+type ResetRecurringTaskCompletionToAvailablePayload {
+    completion: RecurringTaskCompletion!
+}
+
+type RecurringTaskCompletionChangedEvent {
+    completion: RecurringTaskCompletion!
+}
+
+enum TaskCompletionStatus {
+    AVAILABLE
+    COMPLETED
+    APPROVED
+}
+
+# =========================================================
+# Transactions / ledger
+# =========================================================
+
+enum AdjustmentReason {
+    INITIAL_BALANCE
+    MANUAL_ADD
+    MANUAL_REMOVE
+}
+
+"""
+Ledger entry representing money movement.
+All transaction variants share a common base contract.
+"""
+interface Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+}
+
+"""
+Adds money to a child, optionally linked to the task completion that earned it.
+"""
+type RewardTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    toAccount: MoneyAccount!
+    taskCompletion: TaskCompletion!
+}
+
+"""
+Moves money for a child from one account to another.
+"""
+type TransferTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    fromAccount: MoneyAccount!
+    toAccount: MoneyAccount!
+}
+
+"""
+Adjusts a child's balance manually.
+Useful for corrections, starting balances, or exceptional changes.
+The amount is always positive, and the balance direction is determined by `reason`.
+`INITIAL_BALANCE` and `MANUAL_ADD` increase the balance, while `MANUAL_REMOVE` decreases it.
+"""
+type AdjustmentTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    account: MoneyAccount!
+    reason: AdjustmentReason!
+}
+
+"""
+Removes money from a child's account because it was spent or taken out.
+"""
+type WithdrawalTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    fromAccount: MoneyAccount!
+}
+
+"""
+Adds money into a child's account from outside the tracked system.
+"""
+type DepositTransaction implements Transaction {
+    id: ID!
+    timestamp: DateTime!
+    family: Family!
+    amount: Money!
+    description: String
+
+    owner: Parent!
+    child: Child!
+    toAccount: MoneyAccount!
+}
+
+input RecordDepositInput {
+    familyId: ID!
+    childId: ID!
+    toAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordDepositPayload {
+    transaction: DepositTransaction!
+}
+
+input RecordWithdrawalInput {
+    familyId: ID!
+    childId: ID!
+    fromAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordWithdrawalPayload {
+    transaction: WithdrawalTransaction!
+}
+
+input RecordTransferInput {
+    familyId: ID!
+    childId: ID!
+    fromAccountId: ID!
+    toAccountId: ID!
+    amountMinor: Int!
+    description: String
+}
+
+type RecordTransferPayload {
+    transaction: TransferTransaction!
+}
+
+input RecordAdjustmentInput {
+    familyId: ID!
+    childId: ID!
+    accountId: ID!
+    amountMinor: Int!
+    reason: AdjustmentReason!
+    description: String
+}
+
+type RecordAdjustmentPayload {
+    transaction: AdjustmentTransaction!
+}
+
+type TransactionRecordedEvent {
+    transaction: Transaction!
+}
