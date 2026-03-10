@@ -242,9 +242,8 @@ CREATE TABLE transactions (
     description TEXT NULL,
     owner_parent_id BIGINT NOT NULL,
     child_id BIGINT NOT NULL,
-    to_account_id BIGINT NULL,
-    from_account_id BIGINT NULL,
-    account_id BIGINT NULL,
+    account_one_id BIGINT NULL,
+    account_two_id BIGINT NULL,
     adjustment_reason VARCHAR(32) NULL,
     one_off_task_id BIGINT NULL,
     recurring_task_completion_id BIGINT NULL,
@@ -254,25 +253,24 @@ CREATE TABLE transactions (
     CONSTRAINT fk_transactions_family FOREIGN KEY (family_id) REFERENCES families (id) ON DELETE CASCADE,
     CONSTRAINT fk_transactions_owner_parent FOREIGN KEY (family_id, owner_parent_id) REFERENCES family_parents (family_id, parent_id) ON DELETE RESTRICT,
     CONSTRAINT fk_transactions_child FOREIGN KEY (family_id, child_id) REFERENCES family_children (family_id, child_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_transactions_to_account FOREIGN KEY (family_id, to_account_id) REFERENCES money_accounts (family_id, id) ON DELETE RESTRICT,
-    CONSTRAINT fk_transactions_from_account FOREIGN KEY (family_id, from_account_id) REFERENCES money_accounts (family_id, id) ON DELETE RESTRICT,
-    CONSTRAINT fk_transactions_account FOREIGN KEY (family_id, account_id) REFERENCES money_accounts (family_id, id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transactions_account_one FOREIGN KEY (family_id, account_one_id) REFERENCES money_accounts (family_id, id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transactions_account_two FOREIGN KEY (family_id, account_two_id) REFERENCES money_accounts (family_id, id) ON DELETE RESTRICT,
     CONSTRAINT fk_transactions_one_off_task FOREIGN KEY (family_id, one_off_task_id) REFERENCES one_off_tasks (family_id, id) ON DELETE RESTRICT,
     CONSTRAINT fk_transactions_recurring_task_completion FOREIGN KEY (recurring_task_completion_id) REFERENCES recurring_task_completions (id) ON DELETE RESTRICT,
     CONSTRAINT chk_transactions_transaction_type CHECK (transaction_type IN ('REWARD', 'DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'ADJUSTMENT')),
     CONSTRAINT chk_transactions_amount_minor CHECK (amount_minor > 0),
     CONSTRAINT chk_transactions_adjustment_reason CHECK (adjustment_reason IS NULL OR adjustment_reason IN ('INITIAL_BALANCE', 'MANUAL_ADD', 'MANUAL_REMOVE')),
-    CONSTRAINT chk_transactions_transfer_accounts_differ CHECK (transaction_type <> 'TRANSFER' OR from_account_id <> to_account_id),
+    CONSTRAINT chk_transactions_transfer_accounts_differ CHECK (transaction_type <> 'TRANSFER' OR account_one_id <> account_two_id),
     CONSTRAINT chk_transactions_reward_links CHECK (
         (transaction_type = 'REWARD' AND ((one_off_task_id IS NOT NULL AND recurring_task_completion_id IS NULL) OR (one_off_task_id IS NULL AND recurring_task_completion_id IS NOT NULL)))
         OR (transaction_type <> 'REWARD' AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
     ),
     CONSTRAINT chk_transactions_variant_columns CHECK (
-        (transaction_type = 'REWARD' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND to_account_id IS NOT NULL AND from_account_id IS NULL AND account_id IS NULL AND adjustment_reason IS NULL)
-        OR (transaction_type = 'DEPOSIT' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND to_account_id IS NOT NULL AND from_account_id IS NULL AND account_id IS NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
-        OR (transaction_type = 'WITHDRAWAL' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND from_account_id IS NOT NULL AND to_account_id IS NULL AND account_id IS NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
-        OR (transaction_type = 'TRANSFER' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND from_account_id IS NOT NULL AND to_account_id IS NOT NULL AND account_id IS NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
-        OR (transaction_type = 'ADJUSTMENT' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_id IS NOT NULL AND to_account_id IS NULL AND from_account_id IS NULL AND adjustment_reason IS NOT NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
+        (transaction_type = 'REWARD' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_one_id IS NOT NULL AND account_two_id IS NULL AND adjustment_reason IS NULL)
+        OR (transaction_type = 'DEPOSIT' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_one_id IS NOT NULL AND account_two_id IS NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
+        OR (transaction_type = 'WITHDRAWAL' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_one_id IS NOT NULL AND account_two_id IS NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
+        OR (transaction_type = 'TRANSFER' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_one_id IS NOT NULL AND account_two_id IS NOT NULL AND adjustment_reason IS NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
+        OR (transaction_type = 'ADJUSTMENT' AND owner_parent_id IS NOT NULL AND child_id IS NOT NULL AND account_one_id IS NOT NULL AND account_two_id IS NULL AND adjustment_reason IS NOT NULL AND one_off_task_id IS NULL AND recurring_task_completion_id IS NULL)
     )
 ) COMMENT='Immutable ledger entries. Same-family validation for recurring task completion links remains application-enforced because recurring_task_completions does not expose family_id directly.';
 
