@@ -1,0 +1,22 @@
+union FamilyEvent =
+    FamilyUpdatedEvent
+    | FamilyDeletedEvent
+    | ParentInvitationChangedEvent
+    | FamilyParentChangedEvent
+    | FamilyParentRemovedEvent
+    | FamilyChildChangedEvent
+    | FamilyChildRemovedEvent
+    | MoneyAccountChangedEvent
+    | MoneyAccountDeletedEvent
+    | TaskCategoryChangedEvent
+    | TaskCategoryDeletedEvent
+    | OneOffTaskChangedEvent
+    | OneOffTaskDeletedEvent
+    | RecurringTaskChangedEvent
+    | RecurringTaskDeletedEvent
+    | RecurringTaskCompletionChangedEvent
+    | TransactionRecordedEvent
+
+extend type Subscription {
+    familyEvents(familyId: ID!): FamilyEvent!
+}

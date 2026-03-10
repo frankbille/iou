@@ -1,0 +1,388 @@
+# =========================================================
+# Tasks
+# =========================================================
+
+type TaskCategory {
+    id: ID!
+    name: String!
+    family: Family!
+}
+
+input CreateTaskCategoryInput {
+    familyId: ID!
+    name: String!
+}
+
+type CreateTaskCategoryPayload {
+    taskCategory: TaskCategory!
+}
+
+input UpdateTaskCategoryInput {
+    taskCategoryId: ID!
+    name: String!
+}
+
+type UpdateTaskCategoryPayload {
+    taskCategory: TaskCategory!
+}
+
+input DeleteTaskCategoryInput {
+    taskCategoryId: ID!
+}
+
+type DeleteTaskCategoryPayload {
+    deletedTaskCategoryId: ID!
+}
+
+type TaskCategoryChangedEvent {
+    taskCategory: TaskCategory!
+}
+
+type TaskCategoryDeletedEvent {
+    deletedTaskCategoryId: ID!
+}
+
+interface Task {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+
+    """
+    The children who are allowed to complete this task.
+
+    Null means the task is available to all children in the family.
+
+    An empty list is also valid and means no children are currently allowed
+    to complete the task. This may occur temporarily due to configuration
+    or UI behavior and is allowed by the data model even if the frontend
+    typically avoids creating this state.
+    """
+    eligibleChildren: [Child!]
+}
+
+enum RewardPayoutPolicy {
+    ON_COMPLETION
+    ON_APPROVAL
+}
+
+interface TaskCompletion {
+    """
+    The child who completed this task.
+
+    This is null while the task is still AVAILABLE and no child has
+    completed it yet.
+    """
+    child: Child
+
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+"""
+A one-off task is both the task definition and the thing that gets completed.
+"""
+type OneOffTask implements Task & TaskCompletion {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+    eligibleChildren: [Child!]
+
+    child: Child
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+input CreateOneOffTaskInput {
+    familyId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+}
+
+type CreateOneOffTaskPayload {
+    task: OneOffTask!
+}
+
+input UpdateOneOffTaskInput {
+    taskId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+}
+
+type UpdateOneOffTaskPayload {
+    task: OneOffTask!
+}
+
+input DeleteOneOffTaskInput {
+    taskId: ID!
+}
+
+type DeleteOneOffTaskPayload {
+    deletedTaskId: ID!
+}
+
+input CompleteOneOffTaskInput {
+    taskId: ID!
+    childId: ID!
+}
+
+type CompleteOneOffTaskPayload {
+    task: OneOffTask!
+    rewardTransaction: RewardTransaction
+}
+
+input ApproveOneOffTaskInput {
+    taskId: ID!
+}
+
+type ApproveOneOffTaskPayload {
+    task: OneOffTask!
+    rewardTransaction: RewardTransaction!
+}
+
+input ResetOneOffTaskToAvailableInput {
+    taskId: ID!
+}
+
+type ResetOneOffTaskToAvailablePayload {
+    task: OneOffTask!
+}
+
+type OneOffTaskChangedEvent {
+    task: OneOffTask!
+}
+
+type OneOffTaskDeletedEvent {
+    deletedTaskId: ID!
+}
+
+"""
+A recurring task is a reusable definition that produces separate completions.
+"""
+type RecurringTask implements Task {
+    id: ID!
+    family: Family!
+    title: String!
+    description: String
+    category: TaskCategory
+    reward: Money!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    createdBy: Parent!
+    createdAt: DateTime!
+    updatedBy: Parent!
+    updatedAt: DateTime!
+    eligibleChildren: [Child!]
+
+    status: RecurringTaskStatus!
+    recurrence: TaskRecurrence!
+    completions: [RecurringTaskCompletion!]!
+}
+
+input CreateRecurringTaskInput {
+    familyId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+    recurrence: TaskRecurrenceInput!
+}
+
+type CreateRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input UpdateRecurringTaskInput {
+    taskId: ID!
+    title: String!
+    description: String
+    categoryId: ID
+    rewardAmountMinor: Int!
+    rewardPayoutPolicy: RewardPayoutPolicy!
+    eligibleChildIds: [ID!]
+    recurrence: TaskRecurrenceInput!
+}
+
+type UpdateRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input ArchiveRecurringTaskInput {
+    taskId: ID!
+}
+
+type ArchiveRecurringTaskPayload {
+    task: RecurringTask!
+}
+
+input DeleteRecurringTaskInput {
+    taskId: ID!
+}
+
+type DeleteRecurringTaskPayload {
+    deletedTaskId: ID!
+}
+
+type RecurringTaskChangedEvent {
+    task: RecurringTask!
+}
+
+type RecurringTaskDeletedEvent {
+    deletedTaskId: ID!
+}
+
+enum RecurringTaskStatus {
+    ACTIVE
+    ARCHIVED
+}
+
+"""
+Defines how often a recurring task becomes available.
+"""
+type TaskRecurrence {
+    kind: TaskRecurrenceKind!
+    interval: Int
+    daysOfWeek: [DayOfWeek!]
+    dayOfMonth: Int
+    startsOn: Date
+    endsOn: Date
+    maxCompletionsPerPeriod: Int
+}
+
+input TaskRecurrenceInput {
+    kind: TaskRecurrenceKind!
+    interval: Int
+    daysOfWeek: [DayOfWeek!]
+    dayOfMonth: Int
+    startsOn: Date
+    endsOn: Date
+    maxCompletionsPerPeriod: Int
+}
+
+enum TaskRecurrenceKind {
+    DAILY
+    WEEKLY
+    MONTHLY
+    CUSTOM
+}
+
+enum DayOfWeek {
+    MONDAY
+    TUESDAY
+    WEDNESDAY
+    THURSDAY
+    FRIDAY
+    SATURDAY
+    SUNDAY
+}
+
+"""
+A concrete completion of a recurring task.
+"""
+type RecurringTaskCompletion implements TaskCompletion {
+    id: ID!
+    task: RecurringTask!
+    child: Child!
+
+    """
+    The date identifying which recurrence period this completion belongs to.
+    """
+    occurrenceDate: Date!
+
+    status: TaskCompletionStatus!
+    completedAt: DateTime
+    approvedAt: DateTime
+    approvedBy: Parent
+    rewardTransaction: RewardTransaction
+}
+
+input CompleteRecurringTaskInput {
+    taskId: ID!
+    childId: ID!
+    occurrenceDate: Date
+}
+
+type CompleteRecurringTaskPayload {
+    completion: RecurringTaskCompletion!
+    rewardTransaction: RewardTransaction
+}
+
+input ApproveRecurringTaskCompletionInput {
+    completionId: ID!
+}
+
+type ApproveRecurringTaskCompletionPayload {
+    completion: RecurringTaskCompletion!
+    rewardTransaction: RewardTransaction!
+}
+
+input ResetRecurringTaskCompletionToAvailableInput {
+    completionId: ID!
+}
+
+type ResetRecurringTaskCompletionToAvailablePayload {
+    completion: RecurringTaskCompletion!
+}
+
+type RecurringTaskCompletionChangedEvent {
+    completion: RecurringTaskCompletion!
+}
+
+enum TaskCompletionStatus {
+    AVAILABLE
+    COMPLETED
+    APPROVED
+}
+
+extend type Mutation {
+    createTaskCategory(input: CreateTaskCategoryInput!): CreateTaskCategoryPayload!
+    updateTaskCategory(input: UpdateTaskCategoryInput!): UpdateTaskCategoryPayload!
+    deleteTaskCategory(input: DeleteTaskCategoryInput!): DeleteTaskCategoryPayload!
+
+    createRecurringTask(input: CreateRecurringTaskInput!): CreateRecurringTaskPayload!
+    updateRecurringTask(input: UpdateRecurringTaskInput!): UpdateRecurringTaskPayload!
+    archiveRecurringTask(input: ArchiveRecurringTaskInput!): ArchiveRecurringTaskPayload!
+    deleteRecurringTask(input: DeleteRecurringTaskInput!): DeleteRecurringTaskPayload!
+
+    createOneOffTask(input: CreateOneOffTaskInput!): CreateOneOffTaskPayload!
+    updateOneOffTask(input: UpdateOneOffTaskInput!): UpdateOneOffTaskPayload!
+    deleteOneOffTask(input: DeleteOneOffTaskInput!): DeleteOneOffTaskPayload!
+
+    completeOneOffTask(input: CompleteOneOffTaskInput!): CompleteOneOffTaskPayload!
+    approveOneOffTask(input: ApproveOneOffTaskInput!): ApproveOneOffTaskPayload!
+    resetOneOffTaskToAvailable(input: ResetOneOffTaskToAvailableInput!): ResetOneOffTaskToAvailablePayload!
+
+    completeRecurringTask(input: CompleteRecurringTaskInput!): CompleteRecurringTaskPayload!
+    approveRecurringTaskCompletion(input: ApproveRecurringTaskCompletionInput!): ApproveRecurringTaskCompletionPayload!
+    resetRecurringTaskCompletionToAvailable(input: ResetRecurringTaskCompletionToAvailableInput!): ResetRecurringTaskCompletionToAvailablePayload!
+}
