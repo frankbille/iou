@@ -1,0 +1,55 @@
+name: KMP Module Tests
+
+on:
+  workflow_call:
+    inputs:
+      job-name:
+        required: true
+        type: string
+      gradle-task:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ inputs.job-name }}
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Boot iOS simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          device_name="$(
+            xcrun simctl list devices available | \
+            grep -E 'iPhone' | \
+            head -n 1 | \
+            sed -E 's/^[[:space:]]*([^([]+)[[:space:]]+\(.*/\1/' | \
+            xargs
+          )"
+          if [ -z "${device_name}" ]; then
+            echo "No available iPhone simulator found" >&2
+            exit 1
+          fi
+          xcrun simctl boot "$device_name" || true
+          open -a Simulator
+          xcrun simctl bootstatus "$device_name" -b
+
+      - name: Run module tests
+        run: ./gradlew ${{ inputs.gradle-task }}
