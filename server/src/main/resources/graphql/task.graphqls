@@ -47,7 +47,7 @@ interface Task {
     family: Family!
     title: String!
     description: String
-    category: TaskCategory
+    category: TaskCategory!
     reward: Money!
     rewardPayoutPolicy: RewardPayoutPolicy!
     createdBy: Parent!
@@ -97,7 +97,7 @@ type OneOffTask implements Task & TaskCompletion {
     family: Family!
     title: String!
     description: String
-    category: TaskCategory
+    category: TaskCategory!
     reward: Money!
     rewardPayoutPolicy: RewardPayoutPolicy!
     createdBy: Parent!
@@ -193,7 +193,7 @@ type RecurringTask implements Task {
     family: Family!
     title: String!
     description: String
-    category: TaskCategory
+    category: TaskCategory!
     reward: Money!
     rewardPayoutPolicy: RewardPayoutPolicy!
     createdBy: Parent!

@@ -1,76 +1,31 @@
 package dk.frankbille.iou.task
 
 import dk.frankbille.iou.child.ChildEntity
-import dk.frankbille.iou.family.FamilyEntity
 import dk.frankbille.iou.parent.ParentEntity
-import dk.frankbille.iou.taskcategory.TaskCategoryEntity
+import dk.frankbille.iou.task.TaskCompletionStatus.AVAILABLE
 import jakarta.persistence.Column
+import jakarta.persistence.DiscriminatorValue
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
+import jakarta.persistence.EnumType.STRING
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
+import jakarta.persistence.FetchType.EAGER
+import jakarta.persistence.FetchType.LAZY
 import jakarta.persistence.JoinColumn
-import jakarta.persistence.Lob
 import jakarta.persistence.ManyToOne
+import jakarta.persistence.PrimaryKeyJoinColumn
 import jakarta.persistence.Table
 import java.time.Instant
 
 @Entity
+@DiscriminatorValue("ONE_OFF")
 @Table(name = "one_off_tasks")
-class OneOffTaskEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
-    var id: Long? = null
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id", nullable = false)
-    lateinit var family: FamilyEntity
-
-    @Column(name = "title", nullable = false)
-    var title: String = ""
-
-    @Lob
-    @Column(name = "description")
-    var description: String? = null
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    var category: TaskCategoryEntity? = null
-
-    @Column(name = "reward_amount_minor", nullable = false)
-    var rewardAmountMinor: Int = 0
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "reward_payout_policy", length = 32, nullable = false)
-    var rewardPayoutPolicy: RewardPayoutPolicy = RewardPayoutPolicy.ON_COMPLETION
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "eligibility_mode", length = 32, nullable = false)
-    var eligibilityMode: EligibilityMode = EligibilityMode.ALL_CHILDREN
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_parent_id", nullable = false)
-    lateinit var createdByParent: ParentEntity
-
-    @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.EPOCH
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by_parent_id", nullable = false)
-    lateinit var updatedByParent: ParentEntity
-
-    @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.EPOCH
-
-    @Enumerated(EnumType.STRING)
+@PrimaryKeyJoinColumn(name = "task_id")
+class OneOffTaskEntity : TaskEntity() {
+    @Enumerated(STRING)
     @Column(name = "status", length = 32, nullable = false)
-    var status: TaskCompletionStatus = TaskCompletionStatus.AVAILABLE
+    var status: TaskCompletionStatus = AVAILABLE
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = EAGER)
     @JoinColumn(name = "completed_child_id")
     var completedChild: ChildEntity? = null
 
@@ -80,7 +35,7 @@ class OneOffTaskEntity {
     @Column(name = "approved_at")
     var approvedAt: Instant? = null
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "approved_by_parent_id")
     var approvedByParent: ParentEntity? = null
 }

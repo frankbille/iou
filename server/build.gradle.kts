@@ -30,7 +30,6 @@ dependencies {
 
     implementation(projects.shared)
 
-
     runtimeOnly(libs.mysql.connector.j)
 
     testImplementation(libs.spring.boot.devtools)
@@ -42,6 +41,7 @@ dependencies {
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.mysql)
+    testImplementation(libs.assertj.core)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }

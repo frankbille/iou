@@ -2,19 +2,21 @@ package dk.frankbille.iou.task
 
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.parent.ParentEntity
+import dk.frankbille.iou.task.TaskCompletionStatus.AVAILABLE
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
+import jakarta.persistence.FetchType.EAGER
 import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
+import jakarta.persistence.GenerationType.IDENTITY
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
+import java.time.Instant.EPOCH
 import java.time.LocalDate
 
 @Entity
@@ -29,15 +31,14 @@ import java.time.LocalDate
 )
 class RecurringTaskCompletionEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = IDENTITY)
     @Column(name = "id", nullable = false)
     var id: Long? = null
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recurring_task_id", nullable = false)
-    lateinit var recurringTask: RecurringTaskEntity
+    @Column(name = "recurring_task_id", nullable = false)
+    var recurringTaskId: Long = -1
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = EAGER, optional = false)
     @JoinColumn(name = "child_id", nullable = false)
     lateinit var child: ChildEntity
 
@@ -46,15 +47,15 @@ class RecurringTaskCompletionEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 32, nullable = false)
-    var status: TaskCompletionStatus = TaskCompletionStatus.AVAILABLE
+    var status: TaskCompletionStatus = AVAILABLE
 
     @Column(name = "completed_at")
-    var completedAt: Instant? = null
+    var completedAt: Instant = EPOCH
 
     @Column(name = "approved_at")
     var approvedAt: Instant? = null
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = EAGER)
     @JoinColumn(name = "approved_by_parent_id")
     var approvedByParent: ParentEntity? = null
 }

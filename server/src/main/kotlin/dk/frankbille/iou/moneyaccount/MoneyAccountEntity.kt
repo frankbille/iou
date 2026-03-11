@@ -1,16 +1,13 @@
 package dk.frankbille.iou.moneyaccount
 
-import dk.frankbille.iou.family.FamilyEntity
+import dk.frankbille.iou.moneyaccount.MoneyAccountKind.CASH
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
+import jakarta.persistence.EnumType.STRING
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
+import jakarta.persistence.GenerationType.IDENTITY
 import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 
@@ -26,18 +23,17 @@ import jakarta.persistence.UniqueConstraint
 )
 class MoneyAccountEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = IDENTITY)
     @Column(name = "id", nullable = false)
     var id: Long? = null
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id", nullable = false)
-    lateinit var family: FamilyEntity
+    @Column(name = "family_id", nullable = false)
+    var familyId: Long = -1
 
     @Column(name = "name", nullable = false)
     var name: String = ""
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(STRING)
     @Column(name = "kind", length = 32, nullable = false)
-    var kind: MoneyAccountKind = MoneyAccountKind.CASH
+    var kind: MoneyAccountKind = CASH
 }
