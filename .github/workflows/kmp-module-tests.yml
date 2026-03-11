@@ -9,9 +9,13 @@ on:
       gradle-task:
         required: true
         type: string
+      report-paths:
+        required: true
+        type: string
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   test:
@@ -53,3 +57,10 @@ jobs:
 
       - name: Run module tests
         run: ./gradlew ${{ inputs.gradle-task }}
+
+      - name: Publish test report
+        uses: mikepenz/action-junit-report@v6
+        if: success() || failure()
+        with:
+          check_name: ${{ inputs.job-name }} Test Report
+          report_paths: ${{ inputs.report-paths }}

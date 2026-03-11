@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - '**'
-  pull_request:
-    branches:
-      - '**'
   workflow_dispatch:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   server:
@@ -34,14 +32,23 @@ jobs:
       - name: Run server tests
         run: ./gradlew server:test
 
+      - name: Publish server test report
+        uses: mikepenz/action-junit-report@v6
+        if: success() || failure()
+        with:
+          check_name: Server Test Report
+          report_paths: server/build/test-results/**/*.xml
+
   compose-app:
     uses: ./.github/workflows/kmp-module-tests.yml
     with:
       job-name: Compose App
       gradle-task: composeApp:allTests
+      report-paths: composeApp/build/test-results/**/*.xml
 
   shared:
     uses: ./.github/workflows/kmp-module-tests.yml
     with:
       job-name: Shared
       gradle-task: shared:allTests
+      report-paths: shared/build/test-results/**/*.xml
