@@ -6,6 +6,7 @@ import dk.frankbille.iou.transaction.RewardTransactionEntity
 import dk.frankbille.iou.transaction.TransactionRepository
 import dk.frankbille.iou.transaction.TransferTransactionEntity
 import dk.frankbille.iou.transaction.WithdrawalTransactionEntity
+import dk.frankbille.iou.security.FamilyAuthorizationService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -14,15 +15,19 @@ import org.springframework.transaction.annotation.Transactional
 class MoneyAccountService(
     private val moneyAccountRepository: MoneyAccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val familyAuthorizationService: FamilyAuthorizationService,
 ) {
-    fun getByFamilyId(familyId: Long): List<MoneyAccount> =
-        moneyAccountRepository.findAllByFamilyIdOrderByNameAsc(familyId).map { it.toDto() }
+    fun getByFamilyId(familyId: Long): List<MoneyAccount> {
+        familyAuthorizationService.requireAccess(familyId)
+        return moneyAccountRepository.findAllByFamilyIdOrderByNameAsc(familyId).map { it.toDto() }
+    }
 
     fun getBalance(
         accountId: Long,
         familyId: Long,
-    ): Money =
-        Money(
+    ): Money {
+        familyAuthorizationService.requireAccess(familyId)
+        return Money(
             transactionRepository.findAllByFamilyIdOrderByTimestampDesc(familyId).sumOf { transaction ->
                 when (transaction) {
                     is RewardTransactionEntity -> {
@@ -55,6 +60,7 @@ class MoneyAccountService(
                 }
             },
         )
+    }
 }
 
 fun MoneyAccountEntity.toDto(): MoneyAccount =

@@ -61,7 +61,13 @@ import java.time.DayOfWeek.THURSDAY
 import java.time.Instant
 import java.time.LocalDate
 
-@SpringBootTest
+@SpringBootTest(
+    properties = [
+        "spring.liquibase.contexts=schema",
+        "decorator.datasource.p6spy.logging=custom",
+        "decorator.datasource.p6spy.custom-appender-class=dk.frankbille.iou.e2e.SeedDataCreator"
+    ]
+)
 @Import(IntegrationTestConfiguration::class)
 class TestDataIntegration {
     @Autowired

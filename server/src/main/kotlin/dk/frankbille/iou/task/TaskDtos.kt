@@ -68,7 +68,7 @@ data class RecurringTask(
     override val updatedBy: Parent? = null,
     override val updatedAt: Instant,
     override val eligibleChildren: List<Child>? = null,
-    val status: RecurringTaskStatus,
+    val recurringTaskStatus: RecurringTaskStatus,
     val recurrence: TaskRecurrence,
     val createdByParentId: Long,
     val updatedByParentId: Long,

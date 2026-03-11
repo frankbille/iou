@@ -202,7 +202,7 @@ type RecurringTask implements Task {
     updatedAt: DateTime!
     eligibleChildren: [Child!]
 
-    status: RecurringTaskStatus!
+    recurringTaskStatus: RecurringTaskStatus!
     recurrence: TaskRecurrence!
     completions: [RecurringTaskCompletion!]!
 }

@@ -34,6 +34,18 @@ Technically, this is a Kotlin-based multi-module project. The backend lives in `
 
 The overall direction is a single product that can span platforms while sharing domain logic where it makes sense. At the moment, the backend domain model is further along than the user-facing app.
 
+## Backend Authentication
+
+The `server/` module now expects bearer JWT authentication on the GraphQL endpoint.
+
+For local runs, provide a symmetric HMAC secret through `IOU_SECURITY_JWT_SECRET` (or the equivalent Spring property `iou.security.jwt-secret`).
+
+The current baseline expects the JWT `sub` claim to contain a Rails-style GlobalID:
+
+* `gid://iou/Parent/123`
+
+The backend parses the subject to derive both the person type and the internal id. This is intentionally a resource-server baseline only. Token issuance, invite acceptance, and child authentication are still future work.
+
 ## 📘 More Detail
 
 For the evolving domain and behavior rules, see [SPEC.md](./SPEC.md).
