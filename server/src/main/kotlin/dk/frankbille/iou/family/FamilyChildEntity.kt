@@ -4,11 +4,11 @@ import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.task.RewardPayoutPolicy
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
+import jakarta.persistence.EnumType.STRING
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
+import jakarta.persistence.FetchType.EAGER
 import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
+import jakarta.persistence.GenerationType.IDENTITY
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -27,22 +27,21 @@ import jakarta.persistence.UniqueConstraint
 )
 class FamilyChildEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = IDENTITY)
     @Column(name = "id", nullable = false)
     var id: Long? = null
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id", nullable = false)
-    lateinit var family: FamilyEntity
+    @Column(name = "family_id", nullable = false)
+    var familyId: Long = -1
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = EAGER, optional = false)
     @JoinColumn(name = "child_id", nullable = false)
     lateinit var child: ChildEntity
 
     @Column(name = "relation", nullable = false)
     var relation: String = ""
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(STRING)
     @Column(name = "reward_payout_policy_override", length = 32)
     var rewardPayoutPolicyOverride: RewardPayoutPolicy? = null
 }
