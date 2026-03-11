@@ -34,7 +34,7 @@ jobs:
           fi
 
           changed_files="$(
-            jq -r '[.commits[]? | (.added + .modified + .removed)[]] | unique | .[]' "$GITHUB_EVENT_PATH"
+            jq -r '[.commits[]? | ((.added // []) + (.modified // []) + (.removed // []))[]] | unique | .[]' "$GITHUB_EVENT_PATH"
           )"
 
           server=false
