@@ -4,6 +4,7 @@ import dk.frankbille.iou.child.toDto
 import dk.frankbille.iou.moneyaccount.Currency
 import dk.frankbille.iou.moneyaccount.toDto
 import dk.frankbille.iou.parent.ParentService
+import dk.frankbille.iou.security.FamilyAuthorizationService
 import dk.frankbille.iou.parent.toDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,21 +15,36 @@ class FamilyService(
     private val familyRepository: FamilyRepository,
     private val familyParentRepository: FamilyParentRepository,
     private val familyChildRepository: FamilyChildRepository,
+    private val familyAuthorizationService: FamilyAuthorizationService,
     private val parentService: ParentService,
 ) {
-    fun getViewer(): Viewer =
-        Viewer(
+    fun getViewer(): Viewer {
+        val accessibleFamilyIds = familyAuthorizationService.getAccessibleFamilyIds()
+        val familiesById =
+            familyRepository
+                .findAllById(accessibleFamilyIds)
+                .associateBy { requireNotNull(it.id) }
+
+        return Viewer(
             person = parentService.getViewerPerson(),
-            families = familyRepository.findAll().map { it.toDto() },
+            families = accessibleFamilyIds.mapNotNull { familyId -> familiesById[familyId]?.toDto() },
         )
+    }
 
-    fun getFamily(id: Long): Family = familyRepository.findById(id).orElseThrow().toDto()
+    fun getFamily(id: Long): Family {
+        familyAuthorizationService.requireAccess(id)
+        return familyRepository.findById(id).orElseThrow().toDto()
+    }
 
-    fun getFamilyParents(familyId: Long): List<FamilyParent> =
-        familyParentRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
+    fun getFamilyParents(familyId: Long): List<FamilyParent> {
+        familyAuthorizationService.requireAccess(familyId)
+        return familyParentRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
+    }
 
-    fun getFamilyChildren(familyId: Long): List<FamilyChild> =
-        familyChildRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
+    fun getFamilyChildren(familyId: Long): List<FamilyChild> {
+        familyAuthorizationService.requireAccess(familyId)
+        return familyChildRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
+    }
 }
 
 fun FamilyEntity.toDto(): Family =

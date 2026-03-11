@@ -7,9 +7,7 @@ import org.testcontainers.mysql.MySQLContainer
 
 @TestConfiguration(proxyBeanMethods = false)
 class IntegrationTestConfiguration {
-
     @Bean
     @ServiceConnection
     fun mySQLContainer() = MySQLContainer("mysql:8")
-
 }

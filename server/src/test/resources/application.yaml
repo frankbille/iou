@@ -1,0 +1,15 @@
+spring:
+  liquibase:
+    contexts:
+      - schema
+      - local
+
+decorator:
+  datasource:
+    p6spy:
+      log-format: "%(sqlSingleLine)"
+      logging: slf4j
+
+iou:
+  security:
+    jwt-secret: integration-test-jwt-secret-0123456789abcdef
