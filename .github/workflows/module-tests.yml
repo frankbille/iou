@@ -1,0 +1,54 @@
+name: Module Tests
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '24'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run server tests
+        run: ./gradlew server:test
+
+      - name: Publish server test report
+        uses: mikepenz/action-junit-report@v6
+        if: success() || failure()
+        with:
+          check_name: Server Test Report
+          report_paths: server/build/test-results/**/*.xml
+
+  compose-app:
+    uses: ./.github/workflows/kmp-module-tests.yml
+    with:
+      job-name: Compose App
+      gradle-task: composeApp:allTests
+      report-paths: composeApp/build/test-results/**/*.xml
+
+  shared:
+    uses: ./.github/workflows/kmp-module-tests.yml
+    with:
+      job-name: Shared
+      gradle-task: shared:allTests
+      report-paths: shared/build/test-results/**/*.xml
