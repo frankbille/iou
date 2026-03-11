@@ -22,7 +22,10 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.reactive.server.WebTestClient
 
-@SpringBootTest(webEnvironment = RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = RANDOM_PORT,
+    properties = ["spring.liquibase.contexts=schema"],
+)
 @AutoConfigureHttpGraphQlTester
 @Import(IntegrationTestConfiguration::class)
 class SecurityIntegrationTest {

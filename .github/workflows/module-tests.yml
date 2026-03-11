@@ -20,6 +20,11 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Detect relevant file changes
         id: filter
         shell: bash
@@ -33,9 +38,18 @@ jobs:
             exit 0
           fi
 
-          changed_files="$(
-            jq -r '[.commits[]? | ((.added // []) + (.modified // []) + (.removed // []))[]] | unique | .[]' "$GITHUB_EVENT_PATH"
-          )"
+          before_sha="${{ github.event.before }}"
+          after_sha="${{ github.sha }}"
+          zero_sha="0000000000000000000000000000000000000000"
+          default_branch="${{ github.event.repository.default_branch }}"
+
+          if [[ -n "$before_sha" && "$before_sha" != "$zero_sha" ]]; then
+            changed_files="$(git diff --name-only "$before_sha" "$after_sha")"
+          else
+            git fetch origin "$default_branch" --depth=1
+            merge_base="$(git merge-base "origin/$default_branch" "$after_sha")"
+            changed_files="$(git diff --name-only "$merge_base" "$after_sha")"
+          fi
 
           server=false
           compose_app=false
