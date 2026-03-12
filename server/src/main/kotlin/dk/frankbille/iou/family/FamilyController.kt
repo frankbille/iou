@@ -7,6 +7,9 @@ import dk.frankbille.iou.moneyaccount.MoneyAccountService
 import dk.frankbille.iou.task.Task
 import dk.frankbille.iou.taskcategory.TaskCategory
 import dk.frankbille.iou.taskcategory.TaskCategoryService
+import jakarta.validation.Valid
+import org.springframework.graphql.data.method.annotation.Argument
+import org.springframework.graphql.data.method.annotation.MutationMapping
 import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.graphql.data.method.annotation.SchemaMapping
 import org.springframework.stereotype.Controller
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Controller
 @Controller
 class FamilyController(
     private val familyService: FamilyService,
+    private val familyMembershipService: FamilyMembershipService,
     private val parentInvitationService: ParentInvitationService,
     private val moneyAccountService: MoneyAccountService,
     private val taskCategoryService: TaskCategoryService,
@@ -21,6 +25,56 @@ class FamilyController(
 ) {
     @QueryMapping
     fun viewer(): Viewer = familyService.getViewer()
+
+    @MutationMapping
+    fun createFamily(
+        @Argument @Valid input: CreateFamilyInput,
+    ): CreateFamilyPayload = CreateFamilyPayload(familyService.createFamily(input))
+
+    @MutationMapping
+    fun updateFamily(
+        @Argument @Valid input: UpdateFamilyInput,
+    ): UpdateFamilyPayload = UpdateFamilyPayload(familyService.updateFamily(input))
+
+    @MutationMapping
+    fun deleteFamily(
+        @Argument input: DeleteFamilyInput,
+    ): DeleteFamilyPayload = DeleteFamilyPayload(familyService.deleteFamily(input))
+
+    @MutationMapping
+    fun inviteParentToFamily(
+        @Argument @Valid input: InviteParentToFamilyInput,
+    ): InviteParentToFamilyPayload = InviteParentToFamilyPayload(parentInvitationService.inviteParentToFamily(input))
+
+    @MutationMapping
+    fun revokeParentInvitation(
+        @Argument input: RevokeParentInvitationInput,
+    ): RevokeParentInvitationPayload = RevokeParentInvitationPayload(parentInvitationService.revokeParentInvitation(input))
+
+    @MutationMapping
+    fun updateFamilyParent(
+        @Argument @Valid input: UpdateFamilyParentInput,
+    ): UpdateFamilyParentPayload = UpdateFamilyParentPayload(familyMembershipService.updateFamilyParent(input))
+
+    @MutationMapping
+    fun removeParentFromFamily(
+        @Argument input: RemoveParentFromFamilyInput,
+    ): RemoveParentFromFamilyPayload = RemoveParentFromFamilyPayload(familyMembershipService.removeParentFromFamily(input))
+
+    @MutationMapping
+    fun addChildToFamily(
+        @Argument @Valid input: AddChildToFamilyInput,
+    ): AddChildToFamilyPayload = AddChildToFamilyPayload(familyMembershipService.addChildToFamily(input))
+
+    @MutationMapping
+    fun updateFamilyChild(
+        @Argument @Valid input: UpdateFamilyChildInput,
+    ): UpdateFamilyChildPayload = UpdateFamilyChildPayload(familyMembershipService.updateFamilyChild(input))
+
+    @MutationMapping
+    fun removeChildFromFamily(
+        @Argument input: RemoveChildFromFamilyInput,
+    ): RemoveChildFromFamilyPayload = RemoveChildFromFamilyPayload(familyMembershipService.removeChildFromFamily(input))
 
     @SchemaMapping(typeName = "Family", field = "parents")
     fun parents(family: Family): List<FamilyParent> = familyService.getFamilyParents(family.id)

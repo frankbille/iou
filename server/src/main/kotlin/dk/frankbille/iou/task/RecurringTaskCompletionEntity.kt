@@ -16,7 +16,6 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
-import java.time.Instant.EPOCH
 import java.time.LocalDate
 
 @Entity
@@ -50,7 +49,7 @@ class RecurringTaskCompletionEntity {
     var status: TaskCompletionStatus = AVAILABLE
 
     @Column(name = "completed_at")
-    var completedAt: Instant = EPOCH
+    var completedAt: Instant? = null
 
     @Column(name = "approved_at")
     var approvedAt: Instant? = null

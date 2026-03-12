@@ -1,6 +1,5 @@
-package dk.frankbille.iou.taskcategory
+package dk.frankbille.iou.moneyaccount
 
-import dk.frankbille.iou.task.UpdateTaskCategoryInput
 import jakarta.validation.Constraint
 import jakarta.validation.ConstraintValidator
 import jakarta.validation.ConstraintValidatorContext
@@ -12,25 +11,30 @@ import kotlin.reflect.KClass
 
 @Target(CLASS)
 @Retention(RUNTIME)
-@Constraint(validatedBy = [CreateTaskCategoryUniqueNameValidator::class, UpdateTaskCategoryUniqueNameValidator::class])
-annotation class UniqueTaskCategoryName(
-    val message: String = "Task category name must be unique within family",
+@Constraint(
+    validatedBy = [
+        CreateMoneyAccountUniqueNameValidator::class,
+        UpdateMoneyAccountUniqueNameValidator::class,
+    ],
+)
+annotation class UniqueMoneyAccountName(
+    val message: String = "Money account name must be unique within family",
     val groups: Array<KClass<*>> = [],
     val payload: Array<KClass<out Payload>> = [],
 )
 
 @Component
-class CreateTaskCategoryUniqueNameValidator(
-    private val taskCategoryRepository: TaskCategoryRepository,
-) : ConstraintValidator<UniqueTaskCategoryName, CreateTaskCategoryInput> {
+class CreateMoneyAccountUniqueNameValidator(
+    private val moneyAccountRepository: MoneyAccountRepository,
+) : ConstraintValidator<UniqueMoneyAccountName, CreateMoneyAccountInput> {
     override fun isValid(
-        input: CreateTaskCategoryInput,
+        input: CreateMoneyAccountInput,
         context: ConstraintValidatorContext,
     ): Boolean = validateUniqueName(input.familyId, null, input.name, context)
 
     private fun validateUniqueName(
         familyId: Long,
-        existingTaskCategoryId: Long?,
+        existingMoneyAccountId: Long?,
         name: String,
         context: ConstraintValidatorContext,
     ): Boolean {
@@ -40,9 +44,9 @@ class CreateTaskCategoryUniqueNameValidator(
         }
 
         val exists =
-            when (existingTaskCategoryId) {
-                null -> taskCategoryRepository.existsByFamilyIdAndName(familyId, normalizedName)
-                else -> taskCategoryRepository.existsByFamilyIdAndNameAndIdNot(familyId, normalizedName, existingTaskCategoryId)
+            when (existingMoneyAccountId) {
+                null -> moneyAccountRepository.existsByFamilyIdAndName(familyId, normalizedName)
+                else -> moneyAccountRepository.existsByFamilyIdAndNameAndIdNot(familyId, normalizedName, existingMoneyAccountId)
             }
 
         if (!exists) {
@@ -52,7 +56,7 @@ class CreateTaskCategoryUniqueNameValidator(
         context.disableDefaultConstraintViolation()
         context
             .buildConstraintViolationWithTemplate(
-                "Task category '$normalizedName' already exists in family $familyId",
+                "Money account '$normalizedName' already exists in family $familyId",
             ).addPropertyNode("name")
             .addConstraintViolation()
         return false
@@ -60,27 +64,27 @@ class CreateTaskCategoryUniqueNameValidator(
 }
 
 @Component
-class UpdateTaskCategoryUniqueNameValidator(
-    private val taskCategoryRepository: TaskCategoryRepository,
-) : ConstraintValidator<UniqueTaskCategoryName, UpdateTaskCategoryInput> {
+class UpdateMoneyAccountUniqueNameValidator(
+    private val moneyAccountRepository: MoneyAccountRepository,
+) : ConstraintValidator<UniqueMoneyAccountName, UpdateMoneyAccountInput> {
     override fun isValid(
-        input: UpdateTaskCategoryInput,
+        input: UpdateMoneyAccountInput,
         context: ConstraintValidatorContext,
     ): Boolean {
-        val familyId = taskCategoryRepository.findFamilyIdById(input.taskCategoryId) ?: return true
+        val familyId = moneyAccountRepository.findFamilyIdById(input.moneyAccountId) ?: return true
         val normalizedName = input.name.trim()
         if (normalizedName.isBlank()) {
             return true
         }
 
-        if (!taskCategoryRepository.existsByFamilyIdAndNameAndIdNot(familyId, normalizedName, input.taskCategoryId)) {
+        if (!moneyAccountRepository.existsByFamilyIdAndNameAndIdNot(familyId, normalizedName, input.moneyAccountId)) {
             return true
         }
 
         context.disableDefaultConstraintViolation()
         context
             .buildConstraintViolationWithTemplate(
-                "Task category '$normalizedName' already exists in family $familyId",
+                "Money account '$normalizedName' already exists in family $familyId",
             ).addPropertyNode("name")
             .addConstraintViolation()
         return false

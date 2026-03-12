@@ -8,6 +8,12 @@ interface TaskCategoryRepository : JpaRepository<TaskCategoryEntity, Long> {
 
     fun existsByFamilyIdAndName(familyId: Long, name: String): Boolean
 
+    fun existsByFamilyIdAndNameAndIdNot(
+        familyId: Long,
+        name: String,
+        id: Long,
+    ): Boolean
+
     @Query("SELECT tc.familyId FROM TaskCategoryEntity tc WHERE tc.id = :id")
     fun findFamilyIdById(id: Long): Long?
 }

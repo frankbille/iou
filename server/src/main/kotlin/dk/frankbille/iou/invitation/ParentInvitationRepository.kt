@@ -8,6 +8,11 @@ interface ParentInvitationRepository : JpaRepository<ParentInvitationEntity, Lon
 
     fun findAllByFamilyIdOrderByCreatedAtDesc(familyId: Long): List<ParentInvitationEntity>
 
+    fun countByFamilyIdAndInvitedByParentId(
+        familyId: Long,
+        invitedByParentId: Long,
+    ): Long
+
     @Query("SELECT pi.familyId FROM ParentInvitationEntity pi WHERE pi.id = :id")
     fun findFamilyIdById(id: Long): Long?
 }

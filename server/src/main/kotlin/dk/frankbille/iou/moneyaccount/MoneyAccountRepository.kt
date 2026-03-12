@@ -8,6 +8,12 @@ interface MoneyAccountRepository : JpaRepository<MoneyAccountEntity, Long> {
 
     fun existsByFamilyIdAndName(familyId: Long, name: String): Boolean
 
+    fun existsByFamilyIdAndNameAndIdNot(
+        familyId: Long,
+        name: String,
+        id: Long,
+    ): Boolean
+
     @Query("SELECT ma.familyId FROM MoneyAccountEntity ma WHERE ma.id = :id")
     fun findFamilyIdById(id: Long): Long?
 }
