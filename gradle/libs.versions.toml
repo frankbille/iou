@@ -40,6 +40,7 @@ compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-previ
 
 # Backend
 assertj-core = { module = "org.assertj:assertj-core" }
+aspectjweaver = { module = "org.aspectj:aspectjweaver" }
 graphql-java-extended-scalars = { module = "com.graphql-java:graphql-java-extended-scalars", version.ref = "graphqlJavaExtendedScalars" }
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }

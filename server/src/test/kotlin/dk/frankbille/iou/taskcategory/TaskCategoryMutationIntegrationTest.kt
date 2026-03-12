@@ -10,7 +10,6 @@ import dk.frankbille.iou.parent.ParentEntity
 import dk.frankbille.iou.parent.ParentRepository
 import dk.frankbille.iou.test.GraphQlControllerIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.graphql.ResponseError
@@ -29,14 +28,6 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
     @Autowired
     private lateinit var parentRepository: ParentRepository
 
-    @BeforeEach
-    fun setUp() {
-        taskCategoryRepository.deleteAll()
-        familyParentRepository.deleteAll()
-        familyRepository.deleteAll()
-        parentRepository.deleteAll()
-    }
-
     @Test
     fun `createTaskCategory creates a category for an authorized family`() {
         val parent = parentRepository.save(parent(name = "Jane Doe"))
@@ -45,8 +36,8 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             familyParent(
                 familyId = requireNotNull(family.id),
                 parent = parent,
-                relation = "Mom"
-            )
+                relation = "Mom",
+            ),
         )
 
         executeCreateTaskCategory(
@@ -64,10 +55,10 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             .isEqualTo("Chores")
 
         assertThat(
-            taskCategoryRepository.findAllByFamilyIdOrderByNameAsc(requireNotNull(family.id))
-                .map(TaskCategoryEntity::name)
-        )
-            .containsExactly("Chores")
+            taskCategoryRepository
+                .findAllByFamilyIdOrderByNameAsc(requireNotNull(family.id))
+                .map(TaskCategoryEntity::name),
+        ).containsExactly("Chores")
     }
 
     @Test
@@ -79,8 +70,8 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             familyParent(
                 familyId = requireNotNull(family.id),
                 parent = otherParent,
-                relation = "Dad"
-            )
+                relation = "Dad",
+            ),
         )
 
         executeCreateTaskCategory(
@@ -111,8 +102,8 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             familyParent(
                 familyId = requireNotNull(family.id),
                 parent = parent,
-                relation = "Mom"
-            )
+                relation = "Mom",
+            ),
         )
 
         executeCreateTaskCategory(
@@ -143,8 +134,8 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             familyParent(
                 familyId = requireNotNull(family.id),
                 parent = parent,
-                relation = "Mom"
-            )
+                relation = "Mom",
+            ),
         )
         taskCategoryRepository.save(
             TaskCategoryEntity().apply {
@@ -171,10 +162,10 @@ class TaskCategoryMutationIntegrationTest : GraphQlControllerIntegrationTest() {
             }
 
         assertThat(
-            taskCategoryRepository.findAllByFamilyIdOrderByNameAsc(requireNotNull(family.id))
-                .map(TaskCategoryEntity::name)
-        )
-            .containsExactly("Chores")
+            taskCategoryRepository
+                .findAllByFamilyIdOrderByNameAsc(requireNotNull(family.id))
+                .map(TaskCategoryEntity::name),
+        ).containsExactly("Chores")
     }
 
     private fun executeCreateTaskCategory(

@@ -32,6 +32,7 @@ object TestJwtFactory {
     fun createAuthentication(
         parentId: Long,
         familyIds: List<Long> = emptyList(),
+        includeParentRole: Boolean = true,
     ): AuthenticatedParentAuthenticationToken {
         val now = Instant.now()
         val jwt =
@@ -43,10 +44,17 @@ object TestJwtFactory {
                 .expiresAt(now.plusSeconds(3600))
                 .build()
 
+        val authorities =
+            familyIds.map { SimpleGrantedAuthority("FAMILY_$it") }.toMutableList().apply {
+                if (includeParentRole) {
+                    add(0, SimpleGrantedAuthority("ROLE_PARENT"))
+                }
+            }
+
         return AuthenticatedParentAuthenticationToken(
             jwt = jwt,
             authenticatedParent = AuthenticatedParentPrincipal(globalId = GlobalId.parse(parentGlobalId(parentId))),
-            authorities = listOf(SimpleGrantedAuthority("ROLE_PARENT")) + familyIds.map { SimpleGrantedAuthority("FAMILY_$it") },
+            authorities = authorities,
         )
     }
 
