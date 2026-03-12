@@ -9,30 +9,15 @@ import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.family.FamilyService
 import dk.frankbille.iou.parent.ParentEntity
 import dk.frankbille.iou.parent.ParentRepository
-import dk.frankbille.iou.test.IntegrationTestConfiguration
+import dk.frankbille.iou.test.GraphQlControllerIntegrationTest
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.BeforeEach
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.graphql.test.autoconfigure.tester.AutoConfigureHttpGraphQlTester
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
-import org.springframework.context.annotation.Import
-import org.springframework.http.MediaType.APPLICATION_JSON
+import org.springframework.graphql.test.tester.entity
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.test.web.reactive.server.WebTestClient
 
-@SpringBootTest(
-    webEnvironment = RANDOM_PORT,
-    properties = ["spring.liquibase.contexts=schema"],
-)
-@AutoConfigureHttpGraphQlTester
-@Import(IntegrationTestConfiguration::class)
-class SecurityIntegrationTest {
-    @Autowired
-    private lateinit var webTestClient: WebTestClient
-
+class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
     @Autowired
     private lateinit var parentRepository: ParentRepository
 
@@ -45,24 +30,13 @@ class SecurityIntegrationTest {
     @Autowired
     private lateinit var familyService: FamilyService
 
-    @BeforeEach
-    fun cleanDatabase() {
-        SecurityContextHolder.clearContext()
-        familyParentRepository.deleteAll()
-        familyRepository.deleteAll()
-        parentRepository.deleteAll()
-    }
-
     @Test
     fun `graphql endpoint requires authentication`() {
-        webTestClient
-            .post()
-            .uri("/graphql")
-            .contentType(APPLICATION_JSON)
-            .bodyValue(viewerQueryRequest)
-            .exchange()
-            .expectStatus()
-            .isUnauthorized
+        graphQlTester()
+            .document(viewerQuery)
+            .execute()
+            .errors()
+            .expect { it.message == "Unauthorized" }
     }
 
     @Test
@@ -88,29 +62,28 @@ class SecurityIntegrationTest {
             ),
         )
 
-        webTestClient
-            .post()
-            .uri("/graphql")
-            .header("Authorization", "Bearer ${TestJwtFactory.createBearerToken(parentId = requireNotNull(parent.id))}")
-            .contentType(APPLICATION_JSON)
-            .bodyValue(viewerQueryRequest)
-            .exchange()
-            .expectStatus()
-            .isOk
-            .expectBody()
-            .jsonPath("$.data.viewer.person.id")
-            .isEqualTo(requireNotNull(parent.id).toString())
-            .jsonPath("$.data.viewer.person.name")
+        authenticatedGraphQlTester(parent.id!!)
+            .document(viewerQuery)
+            .execute()
+            .path("$.data.viewer.person.id")
+            .entity<Long>()
+            .isEqualTo(parent.id!!)
+            .path("$.data.viewer.person.name")
+            .entity<String>()
             .isEqualTo("Jane Doe")
-            .jsonPath("$.data.viewer.families.length()")
-            .isEqualTo(1)
-            .jsonPath("$.data.viewer.families[0].id")
-            .isEqualTo(requireNotNull(authorizedFamily.id).toString())
-            .jsonPath("$.data.viewer.families[0].name")
+            .path("$.data.viewer.families.length()")
+            .entity<Long>()
+            .isEqualTo(1L)
+            .path("$.data.viewer.families[0].id")
+            .entity<Long>()
+            .isEqualTo(authorizedFamily.id!!)
+            .path("$.data.viewer.families[0].name")
+            .entity<String>()
             .isEqualTo("Authorized family")
     }
 
     @Test
+    @WithAuthenticatedParent(parentId = 1L, familyIds = [1L])
     fun `family access is denied when parent is not a member`() {
         val authorizedParent = parentRepository.save(parent(name = "Jane Doe"))
         val otherParent = parentRepository.save(parent(name = "John Doe"))
@@ -132,29 +105,8 @@ class SecurityIntegrationTest {
             ),
         )
 
-        runAsAuthenticatedParent(
-            parentId = requireNotNull(authorizedParent.id),
-            familyIds = listOf(requireNotNull(authorizedFamily.id)),
-        ) {
-            assertThatThrownBy { familyService.getFamily(requireNotNull(restrictedFamily.id)) }
-                .isInstanceOf(AccessDeniedException::class.java)
-        }
-    }
-
-    private fun runAsAuthenticatedParent(
-        parentId: Long,
-        familyIds: List<Long> = emptyList(),
-        block: () -> Unit,
-    ) {
-        val context = SecurityContextHolder.createEmptyContext()
-        context.authentication = TestJwtFactory.createAuthentication(parentId, familyIds)
-        SecurityContextHolder.setContext(context)
-
-        try {
-            block()
-        } finally {
-            SecurityContextHolder.clearContext()
-        }
+        assertThatThrownBy { familyService.getFamily(requireNotNull(restrictedFamily.id)) }
+            .isInstanceOf(AccessDeniedException::class.java)
     }
 
     private fun parent(name: String) =
@@ -183,11 +135,23 @@ class SecurityIntegrationTest {
         this.parent = parent
         this.relation = relation
     }
-
-    companion object {
-        private val viewerQueryRequest =
-            mapOf(
-                "query" to "query ViewerQuery { viewer { person { id ... on Parent { name } } families { id name } } }",
-            )
-    }
 }
+
+@Language("GraphQL")
+private val viewerQuery =
+    """
+    query ViewerQuery {
+        viewer {
+            person {
+                id 
+                ... on Parent { 
+                    name 
+                } 
+            }
+            families {
+                id
+                name
+            }
+        }
+    }
+    """.trimIndent()

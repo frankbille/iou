@@ -20,6 +20,7 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.aspectjweaver)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.graphql)
     implementation(libs.spring.boot.starter.liquibase)
