@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - '**'
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -38,23 +39,54 @@ jobs:
             exit 0
           fi
 
-          before_sha="${{ github.event.before }}"
-          after_sha="${{ github.sha }}"
           zero_sha="0000000000000000000000000000000000000000"
           default_branch="${{ github.event.repository.default_branch }}"
+          event_name="${{ github.event_name }}"
+          after_sha="${{ github.sha }}"
+          before_sha="${{ github.event.before }}"
+          changed_files=""
 
-          if [[ -n "$before_sha" && "$before_sha" != "$zero_sha" ]] && git cat-file -e "$before_sha^{commit}" 2>/dev/null; then
-            changed_files="$(git diff --name-only "$before_sha" "$after_sha")"
-          else
-            echo "Falling back to diffing from origin/$default_branch"
+          ensure_default_branch_ref() {
             if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
               git fetch origin "$default_branch" --unshallow
             elif ! git show-ref --verify --quiet "refs/remotes/origin/$default_branch"; then
               git fetch origin "$default_branch" --depth=1
             fi
+          }
+
+          if [[ "$event_name" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+
+            echo "Diffing pull request changes: $base_sha..$head_sha"
+            if [[ -n "$base_sha" && -n "$head_sha" ]] &&
+              git cat-file -e "$base_sha^{commit}" 2>/dev/null &&
+              git cat-file -e "$head_sha^{commit}" 2>/dev/null; then
+              changed_files="$(git diff --name-only "$base_sha" "$head_sha")"
+            else
+              echo "Falling back to merge-base diff against origin/$default_branch for pull request"
+              ensure_default_branch_ref
+              merge_base="$(git merge-base "origin/$default_branch" "$after_sha")"
+              changed_files="$(git diff --name-only "$merge_base" "$after_sha")"
+            fi
+          elif [[ "${{ github.ref_name }}" != "$default_branch" ]]; then
+            echo "Diffing branch changes from merge-base with origin/$default_branch"
+            ensure_default_branch_ref
+            merge_base="$(git merge-base "origin/$default_branch" "$after_sha")"
+            changed_files="$(git diff --name-only "$merge_base" "$after_sha")"
+          elif [[ -n "$before_sha" && "$before_sha" != "$zero_sha" ]] &&
+            git cat-file -e "$before_sha^{commit}" 2>/dev/null; then
+            echo "Diffing default branch push changes: $before_sha..$after_sha"
+            changed_files="$(git diff --name-only "$before_sha" "$after_sha")"
+          else
+            echo "Falling back to diffing from origin/$default_branch"
+            ensure_default_branch_ref
             merge_base="$(git merge-base "origin/$default_branch" "$after_sha")"
             changed_files="$(git diff --name-only "$merge_base" "$after_sha")"
           fi
+
+          echo "Changed files under evaluation:"
+          printf '%s\n' "$changed_files"
 
           server=false
           compose_app=false
