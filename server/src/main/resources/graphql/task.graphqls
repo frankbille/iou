@@ -118,7 +118,7 @@ input CreateOneOffTaskInput {
     familyId: ID!
     title: String!
     description: String
-    categoryId: ID
+    categoryId: ID!
     rewardAmountMinor: Int!
     rewardPayoutPolicy: RewardPayoutPolicy!
     eligibleChildIds: [ID!]
@@ -132,7 +132,7 @@ input UpdateOneOffTaskInput {
     taskId: ID!
     title: String!
     description: String
-    categoryId: ID
+    categoryId: ID!
     rewardAmountMinor: Int!
     rewardPayoutPolicy: RewardPayoutPolicy!
     eligibleChildIds: [ID!]
@@ -211,7 +211,7 @@ input CreateRecurringTaskInput {
     familyId: ID!
     title: String!
     description: String
-    categoryId: ID
+    categoryId: ID!
     rewardAmountMinor: Int!
     rewardPayoutPolicy: RewardPayoutPolicy!
     eligibleChildIds: [ID!]
@@ -226,7 +226,7 @@ input UpdateRecurringTaskInput {
     taskId: ID!
     title: String!
     description: String
-    categoryId: ID
+    categoryId: ID!
     rewardAmountMinor: Int!
     rewardPayoutPolicy: RewardPayoutPolicy!
     eligibleChildIds: [ID!]
