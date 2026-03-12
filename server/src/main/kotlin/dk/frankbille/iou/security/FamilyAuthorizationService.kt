@@ -1,7 +1,6 @@
 package dk.frankbille.iou.security
 
 import dk.frankbille.iou.family.FamilyParentRepository
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -14,9 +13,5 @@ class FamilyAuthorizationService(
     fun getAccessibleFamilyIds(): List<Long> =
         familyParentRepository.findAllByParentIdOrderByFamilyIdAsc(currentViewer.parentId()).map { it.familyId }
 
-    fun requireAccess(familyId: Long) {
-        if (!familyParentRepository.existsByFamilyIdAndParentId(familyId, currentViewer.parentId())) {
-            throw AccessDeniedException("Parent ${currentViewer.parentId()} cannot access family $familyId")
-        }
-    }
+    fun getAccessibleFamilyIdsForParent(parentId: Long): List<Long> = familyParentRepository.findFamilyIdByParentId(parentId)
 }

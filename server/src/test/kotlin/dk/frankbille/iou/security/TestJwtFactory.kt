@@ -9,6 +9,7 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.jwt.Jwt
 import java.time.Instant
+import java.util.*
 
 object TestJwtFactory {
     private const val jwtSecret = "integration-test-jwt-secret-0123456789abcdef"
@@ -19,8 +20,8 @@ object TestJwtFactory {
             JWTClaimsSet
                 .Builder()
                 .subject(parentGlobalId(parentId))
-                .issueTime(java.util.Date.from(now))
-                .expirationTime(java.util.Date.from(now.plusSeconds(3600)))
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(3600)))
                 .build()
 
         val signedJwt = SignedJWT(JWSHeader.Builder(HS256).type(JWT).build(), claims)
@@ -28,7 +29,10 @@ object TestJwtFactory {
         return signedJwt.serialize()
     }
 
-    fun createAuthentication(parentId: Long): AuthenticatedParentAuthenticationToken {
+    fun createAuthentication(
+        parentId: Long,
+        familyIds: List<Long> = emptyList(),
+    ): AuthenticatedParentAuthenticationToken {
         val now = Instant.now()
         val jwt =
             Jwt
@@ -42,7 +46,7 @@ object TestJwtFactory {
         return AuthenticatedParentAuthenticationToken(
             jwt = jwt,
             authenticatedParent = AuthenticatedParentPrincipal(globalId = GlobalId.parse(parentGlobalId(parentId))),
-            authorities = listOf(SimpleGrantedAuthority("ROLE_PARENT")),
+            authorities = listOf(SimpleGrantedAuthority("ROLE_PARENT")) + familyIds.map { SimpleGrantedAuthority("FAMILY_$it") },
         )
     }
 

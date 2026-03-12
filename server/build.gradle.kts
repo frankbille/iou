@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.spring.boot.starter.liquibase)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.starter.security)
+    implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
@@ -46,7 +47,7 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.mysql)
     testImplementation(libs.assertj.core)
-    testImplementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:2.0.0")
+    testImplementation(libs.p6spy.spring.boot.starter)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }

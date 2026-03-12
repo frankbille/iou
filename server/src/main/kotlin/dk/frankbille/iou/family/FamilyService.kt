@@ -4,8 +4,9 @@ import dk.frankbille.iou.child.toDto
 import dk.frankbille.iou.moneyaccount.Currency
 import dk.frankbille.iou.moneyaccount.toDto
 import dk.frankbille.iou.parent.ParentService
-import dk.frankbille.iou.security.FamilyAuthorizationService
 import dk.frankbille.iou.parent.toDto
+import dk.frankbille.iou.security.FamilyAuthorizationService
+import dk.frankbille.iou.security.HasAccessToFamily
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -31,20 +32,16 @@ class FamilyService(
         )
     }
 
-    fun getFamily(id: Long): Family {
-        familyAuthorizationService.requireAccess(id)
-        return familyRepository.findById(id).orElseThrow().toDto()
-    }
+    @HasAccessToFamily
+    fun getFamily(familyId: Long): Family = familyRepository.findById(familyId).orElseThrow().toDto()
 
-    fun getFamilyParents(familyId: Long): List<FamilyParent> {
-        familyAuthorizationService.requireAccess(familyId)
-        return familyParentRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
-    }
+    @HasAccessToFamily
+    fun getFamilyParents(familyId: Long): List<FamilyParent> =
+        familyParentRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
 
-    fun getFamilyChildren(familyId: Long): List<FamilyChild> {
-        familyAuthorizationService.requireAccess(familyId)
-        return familyChildRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
-    }
+    @HasAccessToFamily
+    fun getFamilyChildren(familyId: Long): List<FamilyChild> =
+        familyChildRepository.findAllByFamilyIdOrderByIdAsc(familyId).map { it.toDto() }
 }
 
 fun FamilyEntity.toDto(): Family =
