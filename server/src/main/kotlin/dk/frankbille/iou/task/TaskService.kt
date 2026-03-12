@@ -3,7 +3,7 @@ package dk.frankbille.iou.task
 import dk.frankbille.iou.child.toDto
 import dk.frankbille.iou.moneyaccount.Money
 import dk.frankbille.iou.parent.toDto
-import dk.frankbille.iou.security.FamilyAuthorizationService
+import dk.frankbille.iou.security.HasAccessToFamily
 import dk.frankbille.iou.taskcategory.toDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -13,12 +13,9 @@ import org.springframework.transaction.annotation.Transactional
 class TaskService(
     private val taskRepository: TaskRepository,
     private val recurringTaskCompletionRepository: RecurringTaskCompletionRepository,
-    private val familyAuthorizationService: FamilyAuthorizationService,
 ) {
-    fun getByFamilyId(familyId: Long): List<Task> {
-        familyAuthorizationService.requireAccess(familyId)
-        return taskRepository.findAllByFamilyIdOrderByCreatedAtDesc(familyId).map { it.toDto() }
-    }
+    @HasAccessToFamily
+    fun getByFamilyId(familyId: Long): List<Task> = taskRepository.findAllByFamilyIdOrderByCreatedAtDesc(familyId).map { it.toDto() }
 
     fun getCompletions(taskId: Long): List<RecurringTaskCompletion> =
         recurringTaskCompletionRepository.findAllByRecurringTaskIdOrderByOccurrenceDateDesc(taskId).map { it.toDto() }

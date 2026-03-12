@@ -7,7 +7,9 @@ import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Component
 
 @Component
-class AuthenticatedParentJwtAuthenticationConverter : Converter<Jwt, AuthenticatedParentAuthenticationToken> {
+class AuthenticatedParentJwtAuthenticationConverter(
+    private val familyAuthorizationService: FamilyAuthorizationService,
+) : Converter<Jwt, AuthenticatedParentAuthenticationToken> {
     override fun convert(jwt: Jwt): AuthenticatedParentAuthenticationToken {
         val subject = jwt.subject?.takeIf { it.isNotBlank() } ?: throw BadCredentialsException("Missing subject claim")
         val globalId = GlobalId.parse(subject)
@@ -20,10 +22,15 @@ class AuthenticatedParentJwtAuthenticationConverter : Converter<Jwt, Authenticat
             throw BadCredentialsException("Unsupported GlobalID model: ${globalId.modelName}")
         }
 
+        val familyAuthorities =
+            familyAuthorizationService
+                .getAccessibleFamilyIdsForParent(globalId.modelId)
+                .map { SimpleGrantedAuthority("FAMILY_$it") }
+
         return AuthenticatedParentAuthenticationToken(
             jwt = jwt,
             authenticatedParent = AuthenticatedParentPrincipal(globalId = globalId),
-            authorities = listOf(SimpleGrantedAuthority("ROLE_PARENT")),
+            authorities = listOf(SimpleGrantedAuthority("ROLE_PARENT")) + familyAuthorities,
         )
     }
 }

@@ -6,6 +6,7 @@ import dk.frankbille.iou.family.FamilyEntity
 import dk.frankbille.iou.family.FamilyParentEntity
 import dk.frankbille.iou.family.FamilyParentRepository
 import dk.frankbille.iou.family.FamilyRepository
+import dk.frankbille.iou.family.FamilyService
 import dk.frankbille.iou.parent.ParentEntity
 import dk.frankbille.iou.parent.ParentRepository
 import dk.frankbille.iou.test.IntegrationTestConfiguration
@@ -42,7 +43,7 @@ class SecurityIntegrationTest {
     private lateinit var familyParentRepository: FamilyParentRepository
 
     @Autowired
-    private lateinit var familyAuthorizationService: FamilyAuthorizationService
+    private lateinit var familyService: FamilyService
 
     @BeforeEach
     fun cleanDatabase() {
@@ -72,8 +73,20 @@ class SecurityIntegrationTest {
         val authorizedFamily = familyRepository.save(family(name = "Authorized family"))
         val otherFamily = familyRepository.save(family(name = "Other family"))
 
-        familyParentRepository.save(familyParent(familyId = requireNotNull(authorizedFamily.id), parent = parent, relation = "Mom"))
-        familyParentRepository.save(familyParent(familyId = requireNotNull(otherFamily.id), parent = otherParent, relation = "Dad"))
+        familyParentRepository.save(
+            familyParent(
+                familyId = requireNotNull(authorizedFamily.id),
+                parent = parent,
+                relation = "Mom",
+            ),
+        )
+        familyParentRepository.save(
+            familyParent(
+                familyId = requireNotNull(otherFamily.id),
+                parent = otherParent,
+                relation = "Dad",
+            ),
+        )
 
         webTestClient
             .post()
@@ -101,22 +114,40 @@ class SecurityIntegrationTest {
     fun `family access is denied when parent is not a member`() {
         val authorizedParent = parentRepository.save(parent(name = "Jane Doe"))
         val otherParent = parentRepository.save(parent(name = "John Doe"))
+        val authorizedFamily = familyRepository.save(family(name = "Authorized family"))
         val restrictedFamily = familyRepository.save(family(name = "Restricted family"))
 
-        familyParentRepository.save(familyParent(familyId = requireNotNull(restrictedFamily.id), parent = otherParent, relation = "Dad"))
+        familyParentRepository.save(
+            familyParent(
+                familyId = requireNotNull(authorizedFamily.id),
+                parent = authorizedParent,
+                relation = "Mom",
+            ),
+        )
+        familyParentRepository.save(
+            familyParent(
+                familyId = requireNotNull(restrictedFamily.id),
+                parent = otherParent,
+                relation = "Dad",
+            ),
+        )
 
-        runAsAuthenticatedParent(requireNotNull(authorizedParent.id)) {
-            assertThatThrownBy { familyAuthorizationService.requireAccess(requireNotNull(restrictedFamily.id)) }
+        runAsAuthenticatedParent(
+            parentId = requireNotNull(authorizedParent.id),
+            familyIds = listOf(requireNotNull(authorizedFamily.id)),
+        ) {
+            assertThatThrownBy { familyService.getFamily(requireNotNull(restrictedFamily.id)) }
                 .isInstanceOf(AccessDeniedException::class.java)
         }
     }
 
     private fun runAsAuthenticatedParent(
         parentId: Long,
+        familyIds: List<Long> = emptyList(),
         block: () -> Unit,
     ) {
         val context = SecurityContextHolder.createEmptyContext()
-        context.authentication = TestJwtFactory.createAuthentication(parentId)
+        context.authentication = TestJwtFactory.createAuthentication(parentId, familyIds)
         SecurityContextHolder.setContext(context)
 
         try {
