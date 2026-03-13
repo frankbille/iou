@@ -1,5 +1,7 @@
 package dk.frankbille.iou.invitation
 
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.ParentInvitationChangedEvent
 import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.family.InviteParentToFamilyInput
 import dk.frankbille.iou.family.RevokeParentInvitationInput
@@ -24,6 +26,7 @@ class ParentInvitationService(
     private val familyRepository: FamilyRepository,
     private val parentRepository: ParentRepository,
     private val currentViewer: CurrentViewer,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     @HasAccessToFamily
     fun getByFamilyId(familyId: Long): List<ParentInvitation> =
@@ -44,6 +47,9 @@ class ParentInvitationService(
                     invitationNonce = UUID.randomUUID().toString()
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(ParentInvitationChangedEvent(it))
+            }
     }
 
     @Transactional
@@ -56,7 +62,9 @@ class ParentInvitationService(
         }
 
         invitation.status = ParentInvitationStatus.REVOKED
-        return parentInvitationRepository.save(invitation).toDto()
+        return parentInvitationRepository.save(invitation).toDto().also {
+            familyEventRecorder.record(ParentInvitationChangedEvent(it))
+        }
     }
 
     private fun currentParentEntity(): ParentEntity =

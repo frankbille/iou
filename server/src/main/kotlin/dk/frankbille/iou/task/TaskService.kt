@@ -3,6 +3,12 @@ package dk.frankbille.iou.task
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.ChildRepository
 import dk.frankbille.iou.child.toDto
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.OneOffTaskChangedEvent
+import dk.frankbille.iou.events.OneOffTaskDeletedEvent
+import dk.frankbille.iou.events.RecurringTaskChangedEvent
+import dk.frankbille.iou.events.RecurringTaskCompletionChangedEvent
+import dk.frankbille.iou.events.RecurringTaskDeletedEvent
 import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.family.FamilyChildRepository
 import dk.frankbille.iou.moneyaccount.Money
@@ -41,6 +47,7 @@ class TaskService(
     private val parentRepository: ParentRepository,
     private val currentViewer: CurrentViewer,
     private val transactionService: TransactionService,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     @HasAccessToFamily
     fun getByFamilyId(familyId: Long): List<Task> = taskRepository.findAllByFamilyIdOrderByCreatedAtDesc(familyId).map { it.toDto() }
@@ -79,6 +86,9 @@ class TaskService(
                     updatedAt = now
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(OneOffTaskChangedEvent(it))
+            }
     }
 
     @Transactional
@@ -101,7 +111,9 @@ class TaskService(
             updatedAt = Instant.now()
         }
 
-        return oneOffTaskRepository.save(task).toDto()
+        return oneOffTaskRepository.save(task).toDto().also {
+            familyEventRecorder.record(OneOffTaskChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -114,7 +126,14 @@ class TaskService(
 
         val task = oneOffTaskRepository.findById(input.taskId).orElseThrow()
         oneOffTaskRepository.delete(task)
-        return requireNotNull(task.id)
+        return requireNotNull(task.id).also {
+            familyEventRecorder.record(
+                OneOffTaskDeletedEvent(
+                    familyId = task.familyId,
+                    deletedTaskId = it,
+                ),
+            )
+        }
     }
 
     @Transactional
@@ -143,6 +162,9 @@ class TaskService(
                     applyRecurrence(input.recurrence)
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(RecurringTaskChangedEvent(it))
+            }
     }
 
     @Transactional
@@ -173,7 +195,9 @@ class TaskService(
             updatedAt = Instant.now()
         }
 
-        return recurringTaskRepository.save(task).toDto()
+        return recurringTaskRepository.save(task).toDto().also {
+            familyEventRecorder.record(RecurringTaskChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -184,7 +208,9 @@ class TaskService(
         task.status = RecurringTaskStatus.ARCHIVED
         task.updatedByParent = currentParentEntity()
         task.updatedAt = Instant.now()
-        return recurringTaskRepository.save(task).toDto()
+        return recurringTaskRepository.save(task).toDto().also {
+            familyEventRecorder.record(RecurringTaskChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -197,7 +223,14 @@ class TaskService(
 
         val task = recurringTaskRepository.findById(input.taskId).orElseThrow()
         recurringTaskRepository.delete(task)
-        return requireNotNull(task.id)
+        return requireNotNull(task.id).also {
+            familyEventRecorder.record(
+                RecurringTaskDeletedEvent(
+                    familyId = task.familyId,
+                    deletedTaskId = it,
+                ),
+            )
+        }
     }
 
     @Transactional
@@ -232,6 +265,7 @@ class TaskService(
             }
 
         val savedTask = oneOffTaskRepository.save(task).toDto()
+        familyEventRecorder.record(OneOffTaskChangedEvent(savedTask))
         return CompleteOneOffTaskPayload(savedTask, rewardTransaction)
     }
 
@@ -265,6 +299,7 @@ class TaskService(
             )
 
         val savedTask = oneOffTaskRepository.save(task).toDto()
+        familyEventRecorder.record(OneOffTaskChangedEvent(savedTask))
         return ApproveOneOffTaskPayload(savedTask, rewardTransaction)
     }
 
@@ -284,7 +319,9 @@ class TaskService(
         task.approvedByParent = null
         task.updatedByParent = currentParentEntity()
         task.updatedAt = Instant.now()
-        return oneOffTaskRepository.save(task).toDto()
+        return oneOffTaskRepository.save(task).toDto().also {
+            familyEventRecorder.record(OneOffTaskChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -323,6 +360,13 @@ class TaskService(
                     completedAt = Instant.now()
                 },
             )
+        val completionDto = completion.toDto()
+        familyEventRecorder.record(
+            RecurringTaskCompletionChangedEvent(
+                familyId = task.familyId,
+                completion = completionDto,
+            ),
+        )
 
         val rewardTransaction =
             when (effectiveRewardPayoutPolicy(task.familyId, input.childId, task.rewardPayoutPolicy)) {
@@ -337,7 +381,7 @@ class TaskService(
                 RewardPayoutPolicy.ON_APPROVAL -> null
             }
 
-        return CompleteRecurringTaskPayload(completion.toDto(), rewardTransaction)
+        return CompleteRecurringTaskPayload(completionDto, rewardTransaction)
     }
 
     @Transactional
@@ -368,6 +412,12 @@ class TaskService(
             )
 
         val savedCompletion = recurringTaskCompletionRepository.save(completion).toDto()
+        familyEventRecorder.record(
+            RecurringTaskCompletionChangedEvent(
+                familyId = task.familyId,
+                completion = savedCompletion,
+            ),
+        )
         return ApproveRecurringTaskCompletionPayload(savedCompletion, rewardTransaction)
     }
 
@@ -386,7 +436,15 @@ class TaskService(
         completion.completedAt = null
         completion.approvedAt = null
         completion.approvedByParent = null
-        return recurringTaskCompletionRepository.save(completion).toDto()
+        return recurringTaskCompletionRepository.save(completion).toDto().also {
+            val task = recurringTaskRepository.findById(it.recurringTaskId).orElseThrow()
+            familyEventRecorder.record(
+                RecurringTaskCompletionChangedEvent(
+                    familyId = task.familyId,
+                    completion = it,
+                ),
+            )
+        }
     }
 
     private fun resolveTaskDefinitionConfig(
