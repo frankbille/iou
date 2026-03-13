@@ -1,5 +1,8 @@
 package dk.frankbille.iou.moneyaccount
 
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.MoneyAccountChangedEvent
+import dk.frankbille.iou.events.MoneyAccountDeletedEvent
 import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.security.FamilyScopeCheck
 import dk.frankbille.iou.security.HasAccessToFamily
@@ -21,6 +24,7 @@ class MoneyAccountService(
     private val familyRepository: FamilyRepository,
     private val moneyAccountRepository: MoneyAccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     @HasAccessToFamily
     fun getByFamilyId(familyId: Long): List<MoneyAccount> =
@@ -39,6 +43,9 @@ class MoneyAccountService(
                     kind = input.kind
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(MoneyAccountChangedEvent(it))
+            }
     }
 
     @Transactional
@@ -48,7 +55,9 @@ class MoneyAccountService(
         val moneyAccount = moneyAccountRepository.findById(input.moneyAccountId).orElseThrow()
         moneyAccount.name = input.name.trim()
         moneyAccount.kind = input.kind
-        return moneyAccountRepository.save(moneyAccount).toDto()
+        return moneyAccountRepository.save(moneyAccount).toDto().also {
+            familyEventRecorder.record(MoneyAccountChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -72,7 +81,14 @@ class MoneyAccountService(
         }
 
         moneyAccountRepository.delete(moneyAccount)
-        return moneyAccountId
+        return moneyAccountId.also {
+            familyEventRecorder.record(
+                MoneyAccountDeletedEvent(
+                    familyId = moneyAccount.familyId,
+                    deletedMoneyAccountId = it,
+                ),
+            )
+        }
     }
 
     @HasAccessToFamily

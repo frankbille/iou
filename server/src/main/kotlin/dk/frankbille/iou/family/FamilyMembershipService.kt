@@ -2,6 +2,11 @@ package dk.frankbille.iou.family
 
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.ChildRepository
+import dk.frankbille.iou.events.FamilyChildChangedEvent
+import dk.frankbille.iou.events.FamilyChildRemovedEvent
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.FamilyParentChangedEvent
+import dk.frankbille.iou.events.FamilyParentRemovedEvent
 import dk.frankbille.iou.invitation.ParentInvitationRepository
 import dk.frankbille.iou.security.FamilyScopeCheck
 import dk.frankbille.iou.security.HasAccessToFamilyAndIsParent
@@ -27,6 +32,7 @@ class FamilyMembershipService(
     private val recurringTaskRepository: RecurringTaskRepository,
     private val recurringTaskCompletionRepository: RecurringTaskCompletionRepository,
     private val transactionRepository: TransactionRepository,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     @Transactional
     @IsParent
@@ -34,7 +40,9 @@ class FamilyMembershipService(
     fun updateFamilyParent(input: UpdateFamilyParentInput): FamilyParent {
         val familyParent = familyParentRepository.findById(input.familyParentId).orElseThrow()
         familyParent.relation = input.relation.trim()
-        return familyParentRepository.save(familyParent).toDto()
+        return familyParentRepository.save(familyParent).toDto().also {
+            familyEventRecorder.record(FamilyParentChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -52,7 +60,14 @@ class FamilyMembershipService(
         }
 
         familyParentRepository.delete(familyParent)
-        return requireNotNull(familyParent.id)
+        return requireNotNull(familyParent.id).also {
+            familyEventRecorder.record(
+                FamilyParentRemovedEvent(
+                    familyId = familyId,
+                    removedFamilyParentId = it,
+                ),
+            )
+        }
     }
 
     @Transactional
@@ -75,6 +90,9 @@ class FamilyMembershipService(
                     rewardPayoutPolicyOverride = input.rewardPayoutPolicyOverride
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(FamilyChildChangedEvent(it))
+            }
     }
 
     @Transactional
@@ -87,7 +105,9 @@ class FamilyMembershipService(
         familyChild.rewardPayoutPolicyOverride = input.rewardPayoutPolicyOverride
 
         childRepository.save(familyChild.child)
-        return familyChildRepository.save(familyChild).toDto()
+        return familyChildRepository.save(familyChild).toDto().also {
+            familyEventRecorder.record(FamilyChildChangedEvent(it))
+        }
     }
 
     @Transactional
@@ -105,7 +125,14 @@ class FamilyMembershipService(
         }
 
         familyChildRepository.delete(familyChild)
-        return requireNotNull(familyChild.id)
+        return requireNotNull(familyChild.id).also {
+            familyEventRecorder.record(
+                FamilyChildRemovedEvent(
+                    familyId = familyId,
+                    removedFamilyChildId = it,
+                ),
+            )
+        }
     }
 
     private fun hasParentReferences(

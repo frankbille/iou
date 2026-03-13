@@ -2,6 +2,8 @@ package dk.frankbille.iou.transaction
 
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.toDto
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.TransactionRecordedEvent
 import dk.frankbille.iou.family.FamilyChildRepository
 import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.moneyaccount.MoneyAccountEntity
@@ -31,6 +33,7 @@ class TransactionService(
     private val transactionRepository: TransactionRepository,
     private val rewardTransactionRepository: RewardTransactionRepository,
     private val currentViewer: CurrentViewer,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     fun getByChildId(childId: Long): List<Transaction> =
         transactionRepository.findAllByChildIdOrderByTimestampDesc(childId).map { it.toDto() }
@@ -88,6 +91,9 @@ class TransactionService(
                     timestamp = Instant.now()
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(TransactionRecordedEvent(it))
+            }
 
     @Transactional
     @HasAccessToFamilyAndIsParent
@@ -104,6 +110,9 @@ class TransactionService(
                     timestamp = Instant.now()
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(TransactionRecordedEvent(it))
+            }
 
     @Transactional
     @HasAccessToFamilyAndIsParent
@@ -125,6 +134,9 @@ class TransactionService(
                     timestamp = Instant.now()
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(TransactionRecordedEvent(it))
+            }
     }
 
     @Transactional
@@ -143,6 +155,9 @@ class TransactionService(
                     timestamp = Instant.now()
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(TransactionRecordedEvent(it))
+            }
 
     @Transactional
     fun createRewardTransaction(
@@ -170,6 +185,9 @@ class TransactionService(
                     this.recurringTaskCompletion = recurringTaskCompletion
                 },
             ).toDto()
+            .also {
+                familyEventRecorder.record(TransactionRecordedEvent(it))
+            }
     }
 
     private fun currentParentEntity(): ParentEntity =

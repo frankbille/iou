@@ -2,3 +2,6 @@ spring:
   liquibase:
     contexts:
       - schema
+  threads:
+    virtual:
+      enabled: true

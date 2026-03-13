@@ -44,6 +44,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.reactor.test)
     testImplementation(libs.spring.security.test)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.mysql)

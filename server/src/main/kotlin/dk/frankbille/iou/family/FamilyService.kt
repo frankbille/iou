@@ -1,6 +1,9 @@
 package dk.frankbille.iou.family
 
 import dk.frankbille.iou.child.toDto
+import dk.frankbille.iou.events.FamilyDeletedEvent
+import dk.frankbille.iou.events.FamilyEventRecorder
+import dk.frankbille.iou.events.FamilyUpdatedEvent
 import dk.frankbille.iou.moneyaccount.CurrencyInput
 import dk.frankbille.iou.moneyaccount.Currency
 import dk.frankbille.iou.moneyaccount.MoneyAccountEntity
@@ -30,6 +33,7 @@ class FamilyService(
     private val parentRepository: ParentRepository,
     private val currentViewer: CurrentViewer,
     private val parentService: ParentService,
+    private val familyEventRecorder: FamilyEventRecorder,
 ) {
     fun getViewer(): Viewer {
         val accessibleFamilyIds = familyAuthorizationService.getAccessibleFamilyIds()
@@ -108,7 +112,9 @@ class FamilyService(
             recurringTaskCompletionGracePeriodDays = input.recurringTaskCompletionGracePeriodDays
         }
 
-        return familyRepository.save(family).toDto()
+        return familyRepository.save(family).toDto().also {
+            familyEventRecorder.record(FamilyUpdatedEvent(it))
+        }
     }
 
     @Transactional
@@ -119,7 +125,14 @@ class FamilyService(
         familyRepository.saveAndFlush(family)
         familyRepository.delete(family)
         familyRepository.flush()
-        return requireNotNull(family.id)
+        return requireNotNull(family.id).also {
+            familyEventRecorder.record(
+                FamilyDeletedEvent(
+                    familyId = it,
+                    deletedFamilyId = it,
+                ),
+            )
+        }
     }
 
     private fun currentParentEntity(): ParentEntity =
