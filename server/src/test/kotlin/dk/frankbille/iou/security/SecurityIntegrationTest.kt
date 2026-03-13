@@ -143,10 +143,10 @@ private val viewerQuery =
     query ViewerQuery {
         viewer {
             person {
-                id 
-                ... on Parent { 
-                    name 
-                } 
+                id
+                ... on Parent {
+                    name
+                }
             }
             families {
                 id

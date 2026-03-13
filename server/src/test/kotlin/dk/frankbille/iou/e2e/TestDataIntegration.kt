@@ -65,8 +65,8 @@ import java.time.LocalDate
     properties = [
         "spring.liquibase.contexts=schema",
         "decorator.datasource.p6spy.logging=custom",
-        "decorator.datasource.p6spy.custom-appender-class=dk.frankbille.iou.e2e.SeedDataCreator"
-    ]
+        "decorator.datasource.p6spy.custom-appender-class=dk.frankbille.iou.e2e.SeedDataCreator",
+    ],
 )
 @Import(IntegrationTestConfiguration::class)
 class TestDataIntegration {

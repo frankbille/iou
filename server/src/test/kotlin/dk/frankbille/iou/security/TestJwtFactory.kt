@@ -9,10 +9,10 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.jwt.Jwt
 import java.time.Instant
-import java.util.*
+import java.util.Date
 
 object TestJwtFactory {
-    private const val jwtSecret = "integration-test-jwt-secret-0123456789abcdef"
+    private const val JWT_SECRET = "integration-test-jwt-secret-0123456789abcdef"
 
     fun createBearerToken(parentId: Long): String {
         val now = Instant.now()
@@ -25,7 +25,7 @@ object TestJwtFactory {
                 .build()
 
         val signedJwt = SignedJWT(JWSHeader.Builder(HS256).type(JWT).build(), claims)
-        signedJwt.sign(MACSigner(jwtSecret.toByteArray()))
+        signedJwt.sign(MACSigner(JWT_SECRET.toByteArray()))
         return signedJwt.serialize()
     }
 

@@ -1,8 +1,8 @@
 package dk.frankbille.iou.events.singleinstance
 
 import dk.frankbille.iou.events.FamilyEventDistributor
-import dk.frankbille.iou.events.FamilyScopedEvent
 import dk.frankbille.iou.events.FamilyEventSubscriptionHub
+import dk.frankbille.iou.events.FamilyScopedEvent
 import org.springframework.stereotype.Component
 
 @Component

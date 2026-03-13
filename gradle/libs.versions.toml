@@ -18,6 +18,7 @@ material3 = "1.10.0-alpha05"
 p6spySpringBootStarter = "2.0.0"
 springBoot = "4.0.3"
 springDependencyManagement = "1.1.7"
+spotless = "8.3.0"
 
 [libraries]
 # Frontend
@@ -80,3 +81,4 @@ kotlinJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlinJpa" 
 kotlinSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlinSpring" }
 springBoot = { id = "org.springframework.boot", version.ref = "springBoot" }
 springDependencyManagement = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

@@ -3,8 +3,8 @@ package dk.frankbille.iou.task
 import dk.frankbille.iou.child.Child
 import dk.frankbille.iou.moneyaccount.Money
 import dk.frankbille.iou.parent.Parent
-import dk.frankbille.iou.taskcategory.UniqueTaskCategoryName
 import dk.frankbille.iou.taskcategory.TaskCategory
+import dk.frankbille.iou.taskcategory.UniqueTaskCategoryName
 import dk.frankbille.iou.transaction.RewardTransaction
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min

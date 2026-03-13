@@ -8,9 +8,7 @@ import org.springframework.context.annotation.Import
 @SpringBootTest
 @Import(IntegrationTestConfiguration::class)
 class IouApiApplicationTests {
-
     @Test
     fun contextLoads() {
     }
-
 }

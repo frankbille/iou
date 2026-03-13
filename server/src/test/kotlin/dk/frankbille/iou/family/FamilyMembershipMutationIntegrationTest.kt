@@ -114,7 +114,9 @@ class FamilyMembershipMutationIntegrationTest : GraphQlControllerIntegrationTest
                 assertThat(errors).hasSize(1)
                 assertGraphQlError(
                     error = errors.single(),
-                    message = "Cannot remove parent ${requireNotNull(referencedParent.id)} from family ${requireNotNull(family.id)} because it is still referenced by family data",
+                    message = "Cannot remove parent ${requireNotNull(
+                        referencedParent.id,
+                    )} from family ${requireNotNull(family.id)} because it is still referenced by family data",
                     classification = "BAD_REQUEST",
                 )
             }
@@ -249,7 +251,9 @@ class FamilyMembershipMutationIntegrationTest : GraphQlControllerIntegrationTest
                 assertThat(errors).hasSize(1)
                 assertGraphQlError(
                     error = errors.single(),
-                    message = "Cannot remove child ${requireNotNull(child.id)} from family ${requireNotNull(family.id)} because it is still referenced by family data",
+                    message = "Cannot remove child ${requireNotNull(
+                        child.id,
+                    )} from family ${requireNotNull(family.id)} because it is still referenced by family data",
                     classification = "BAD_REQUEST",
                 )
             }

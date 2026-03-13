@@ -6,7 +6,10 @@ import org.springframework.data.jpa.repository.Query
 interface MoneyAccountRepository : JpaRepository<MoneyAccountEntity, Long> {
     fun findAllByFamilyIdOrderByNameAsc(familyId: Long): List<MoneyAccountEntity>
 
-    fun existsByFamilyIdAndName(familyId: Long, name: String): Boolean
+    fun existsByFamilyIdAndName(
+        familyId: Long,
+        name: String,
+    ): Boolean
 
     fun existsByFamilyIdAndNameAndIdNot(
         familyId: Long,

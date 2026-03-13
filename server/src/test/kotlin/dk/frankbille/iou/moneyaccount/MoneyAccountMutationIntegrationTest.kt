@@ -219,7 +219,9 @@ class MoneyAccountMutationIntegrationTest : GraphQlControllerIntegrationTest() {
                 assertThat(errors).hasSize(1)
                 assertGraphQlError(
                     error = errors.single(),
-                    message = "Cannot delete money account ${requireNotNull(defaultAccount.id)} because it is the default reward account for family ${requireNotNull(family.id)}",
+                    message = "Cannot delete money account ${requireNotNull(
+                        defaultAccount.id,
+                    )} because it is the default reward account for family ${requireNotNull(family.id)}",
                     classification = "BAD_REQUEST",
                 )
             }
