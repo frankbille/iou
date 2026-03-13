@@ -6,7 +6,10 @@ import org.springframework.data.jpa.repository.Query
 interface TaskCategoryRepository : JpaRepository<TaskCategoryEntity, Long> {
     fun findAllByFamilyIdOrderByNameAsc(familyId: Long): List<TaskCategoryEntity>
 
-    fun existsByFamilyIdAndName(familyId: Long, name: String): Boolean
+    fun existsByFamilyIdAndName(
+        familyId: Long,
+        name: String,
+    ): Boolean
 
     fun existsByFamilyIdAndNameAndIdNot(
         familyId: Long,

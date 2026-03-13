@@ -120,7 +120,9 @@ class OneOffTaskMutationIntegrationTest : GraphQlControllerIntegrationTest() {
                 assertThat(errors).hasSize(1)
                 assertGraphQlError(
                     error = errors.single(),
-                    message = "Eligible children [${requireNotNull(outsiderChild.id)}] do not belong to family ${requireNotNull(family.id)}",
+                    message = "Eligible children [${requireNotNull(
+                        outsiderChild.id,
+                    )}] do not belong to family ${requireNotNull(family.id)}",
                     classification = "BAD_REQUEST",
                 )
             }

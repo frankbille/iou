@@ -9,8 +9,8 @@ import dk.frankbille.iou.events.OneOffTaskDeletedEvent
 import dk.frankbille.iou.events.RecurringTaskChangedEvent
 import dk.frankbille.iou.events.RecurringTaskCompletionChangedEvent
 import dk.frankbille.iou.events.RecurringTaskDeletedEvent
-import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.family.FamilyChildRepository
+import dk.frankbille.iou.family.FamilyRepository
 import dk.frankbille.iou.moneyaccount.Money
 import dk.frankbille.iou.parent.ParentEntity
 import dk.frankbille.iou.parent.ParentRepository
@@ -253,15 +253,18 @@ class TaskService(
 
         val rewardTransaction =
             when (effectiveRewardPayoutPolicy(task.familyId, input.childId, task.rewardPayoutPolicy)) {
-                RewardPayoutPolicy.ON_COMPLETION ->
+                RewardPayoutPolicy.ON_COMPLETION -> {
                     transactionService.createRewardTransaction(
                         familyId = task.familyId,
                         child = childMembership.child,
                         amountMinor = task.rewardAmountMinor,
                         oneOffTask = task,
                     )
+                }
 
-                RewardPayoutPolicy.ON_APPROVAL -> null
+                RewardPayoutPolicy.ON_APPROVAL -> {
+                    null
+                }
             }
 
         val savedTask = oneOffTaskRepository.save(task).toDto()
@@ -279,7 +282,9 @@ class TaskService(
         }
 
         val completedChild = task.completedChild ?: throw IllegalArgumentException("One-off task ${input.taskId} has no completed child")
-        if (effectiveRewardPayoutPolicy(task.familyId, requireNotNull(completedChild.id), task.rewardPayoutPolicy) != RewardPayoutPolicy.ON_APPROVAL) {
+        if (effectiveRewardPayoutPolicy(task.familyId, requireNotNull(completedChild.id), task.rewardPayoutPolicy) !=
+            RewardPayoutPolicy.ON_APPROVAL
+        ) {
             throw IllegalArgumentException("One-off task ${input.taskId} does not require approval for reward payout")
         }
 
@@ -338,7 +343,13 @@ class TaskService(
         val family = familyRepository.findById(task.familyId).orElseThrow()
         val occurrenceDate = resolveOccurrenceDate(task, family.recurringTaskCompletionGracePeriodDays, input.occurrenceDate)
 
-        if (recurringTaskCompletionRepository.findByRecurringTaskIdAndChildIdAndOccurrenceDate(requireNotNull(task.id), input.childId, occurrenceDate) != null) {
+        if (recurringTaskCompletionRepository.findByRecurringTaskIdAndChildIdAndOccurrenceDate(
+                requireNotNull(task.id),
+                input.childId,
+                occurrenceDate,
+            ) !=
+            null
+        ) {
             throw IllegalArgumentException(
                 "Recurring task ${input.taskId} already has a completion for child ${input.childId} on $occurrenceDate",
             )
@@ -370,15 +381,18 @@ class TaskService(
 
         val rewardTransaction =
             when (effectiveRewardPayoutPolicy(task.familyId, input.childId, task.rewardPayoutPolicy)) {
-                RewardPayoutPolicy.ON_COMPLETION ->
+                RewardPayoutPolicy.ON_COMPLETION -> {
                     transactionService.createRewardTransaction(
                         familyId = task.familyId,
                         child = childMembership.child,
                         amountMinor = task.rewardAmountMinor,
                         recurringTaskCompletion = completion,
                     )
+                }
 
-                RewardPayoutPolicy.ON_APPROVAL -> null
+                RewardPayoutPolicy.ON_APPROVAL -> {
+                    null
+                }
             }
 
         return CompleteRecurringTaskPayload(completionDto, rewardTransaction)
@@ -394,7 +408,9 @@ class TaskService(
         }
 
         val task = recurringTaskRepository.findById(completion.recurringTaskId).orElseThrow()
-        if (effectiveRewardPayoutPolicy(task.familyId, requireNotNull(completion.child.id), task.rewardPayoutPolicy) != RewardPayoutPolicy.ON_APPROVAL) {
+        if (effectiveRewardPayoutPolicy(task.familyId, requireNotNull(completion.child.id), task.rewardPayoutPolicy) !=
+            RewardPayoutPolicy.ON_APPROVAL
+        ) {
             throw IllegalArgumentException("Recurring task completion ${input.completionId} does not require approval for reward payout")
         }
 
@@ -458,7 +474,10 @@ class TaskService(
         }
 
         return when (eligibleChildIds) {
-            null -> TaskDefinitionConfig(category, EligibilityMode.ALL_CHILDREN, null)
+            null -> {
+                TaskDefinitionConfig(category, EligibilityMode.ALL_CHILDREN, null)
+            }
+
             else -> {
                 val uniqueChildIds = eligibleChildIds.toSet()
                 val familyChildIds = familyChildRepository.findChildIdsByFamilyIdAndChildIds(familyId, uniqueChildIds).toSet()
@@ -576,15 +595,16 @@ class TaskService(
         occurrenceDate: LocalDate,
     ): Boolean =
         when (task.recurrenceKind) {
-            TaskRecurrenceKind.DAILY ->
+            TaskRecurrenceKind.DAILY -> {
                 matchesInterval(
                     startDate = task.recurrenceStartsOn,
                     occurrenceDate = occurrenceDate,
                     interval = task.recurrenceInterval,
                     unit = ChronoUnit.DAYS,
                 )
+            }
 
-            TaskRecurrenceKind.WEEKLY ->
+            TaskRecurrenceKind.WEEKLY -> {
                 occurrenceDate.dayOfWeek in (task.recurrenceDays ?: emptySet()) &&
                     matchesInterval(
                         startDate = task.recurrenceStartsOn,
@@ -592,8 +612,9 @@ class TaskService(
                         interval = task.recurrenceInterval,
                         unit = ChronoUnit.WEEKS,
                     )
+            }
 
-            TaskRecurrenceKind.MONTHLY ->
+            TaskRecurrenceKind.MONTHLY -> {
                 occurrenceDate.dayOfMonth == task.recurrenceDayOfMonth &&
                     matchesInterval(
                         startDate = task.recurrenceStartsOn?.withDayOfMonth(1),
@@ -601,6 +622,7 @@ class TaskService(
                         interval = task.recurrenceInterval,
                         unit = ChronoUnit.MONTHS,
                     )
+            }
 
             TaskRecurrenceKind.CUSTOM -> {
                 val byWeekday =
@@ -611,10 +633,16 @@ class TaskService(
                 val byMonthDay =
                     task.recurrenceDayOfMonth?.let {
                         occurrenceDate.dayOfMonth == it &&
-                            matchesInterval(task.recurrenceStartsOn?.withDayOfMonth(1), occurrenceDate.withDayOfMonth(1), task.recurrenceInterval, ChronoUnit.MONTHS)
+                            matchesInterval(
+                                task.recurrenceStartsOn?.withDayOfMonth(1),
+                                occurrenceDate.withDayOfMonth(1),
+                                task.recurrenceInterval,
+                                ChronoUnit.MONTHS,
+                            )
                     }
 
-                byWeekday ?: byMonthDay ?: matchesInterval(task.recurrenceStartsOn, occurrenceDate, task.recurrenceInterval, ChronoUnit.DAYS)
+                byWeekday ?: byMonthDay
+                    ?: matchesInterval(task.recurrenceStartsOn, occurrenceDate, task.recurrenceInterval, ChronoUnit.DAYS)
             }
         }
 

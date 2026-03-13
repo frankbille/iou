@@ -25,7 +25,12 @@ data class GlobalId(
             }
 
             val app = uri.host?.takeIf { it.isNotBlank() } ?: throw BadCredentialsException("Missing GlobalID app")
-            val segments = uri.path?.trim('/')?.split('/')?.filter { it.isNotBlank() }.orEmpty()
+            val segments =
+                uri.path
+                    ?.trim('/')
+                    ?.split('/')
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
             if (segments.size != 2) {
                 throw BadCredentialsException("Invalid GlobalID path")
             }

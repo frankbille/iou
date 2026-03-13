@@ -7,10 +7,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.config.http.SessionCreationPolicy.STATELESS
-import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256
+import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
 import java.nio.charset.StandardCharsets.UTF_8
 import javax.crypto.spec.SecretKeySpec
@@ -28,15 +28,17 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(STATELESS) }
             .authorizeHttpRequests {
                 it
-                    .requestMatchers("/error").permitAll()
-                    .requestMatchers("/graphql").authenticated()
-                    .anyRequest().denyAll()
+                    .requestMatchers("/error")
+                    .permitAll()
+                    .requestMatchers("/graphql")
+                    .authenticated()
+                    .anyRequest()
+                    .denyAll()
             }.oauth2ResourceServer { oauth2 ->
                 oauth2.jwt { jwt ->
                     jwt.jwtAuthenticationConverter(authenticatedParentJwtAuthenticationConverter)
                 }
-            }
-            .build()
+            }.build()
 
     @Bean
     fun jwtDecoder(securityProperties: SecurityProperties): JwtDecoder {

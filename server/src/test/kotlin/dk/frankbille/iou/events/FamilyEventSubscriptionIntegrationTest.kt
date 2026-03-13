@@ -4,9 +4,9 @@ import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.ChildRepository
 import dk.frankbille.iou.family.CurrencyKind.ISO_CURRENCY
 import dk.frankbille.iou.family.CurrencyPosition.PREFIX
-import dk.frankbille.iou.family.FamilyEntity
 import dk.frankbille.iou.family.FamilyChildEntity
 import dk.frankbille.iou.family.FamilyChildRepository
+import dk.frankbille.iou.family.FamilyEntity
 import dk.frankbille.iou.family.FamilyParentEntity
 import dk.frankbille.iou.family.FamilyParentRepository
 import dk.frankbille.iou.family.FamilyRepository
@@ -224,8 +224,7 @@ class FamilyEventSubscriptionIntegrationTest : GraphQlControllerIntegrationTest(
             }.also(SecurityContextHolder::setContext)
     }
 
-    private fun subscriptionTester(): ExecutionGraphQlServiceTester =
-        ExecutionGraphQlServiceTester.create(executionGraphQlService)
+    private fun subscriptionTester(): ExecutionGraphQlServiceTester = ExecutionGraphQlServiceTester.create(executionGraphQlService)
 
     private fun parent(name: String) =
         ParentEntity().apply {
