@@ -4,6 +4,7 @@ import dk.frankbille.iou.family.CurrencyKind.ISO_CURRENCY
 import dk.frankbille.iou.family.CurrencyPosition.PREFIX
 import dk.frankbille.iou.invitation.ParentInvitationEntity
 import dk.frankbille.iou.invitation.ParentInvitationRepository
+import dk.frankbille.iou.invitation.ParentInvitationStatus.EXPIRED
 import dk.frankbille.iou.invitation.ParentInvitationStatus.PENDING
 import dk.frankbille.iou.invitation.ParentInvitationStatus.REVOKED
 import dk.frankbille.iou.parent.ParentEntity
@@ -53,7 +54,33 @@ class ParentInvitationMutationIntegrationTest : GraphQlControllerIntegrationTest
         assertThat(invitation.email).isEqualTo("grandma@example.com")
         assertThat(invitation.status).isEqualTo(PENDING)
         assertThat(invitation.invitedByParent.id).isEqualTo(parent.id)
+        assertThat(invitation.expiresAt).isEqualTo(invitation.createdAt.plusSeconds(7 * 24 * 60 * 60))
         assertThat(invitation.invitationNonce).isNotBlank()
+    }
+
+    @Test
+    fun `parent invitations query lazily expires stale pending invitations`() {
+        val parent = parentRepository.save(parent(name = "Jane Doe"))
+        val family = familyRepository.save(family(name = "Family One"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, relation = "Mom"))
+        val invitation =
+            parentInvitationRepository.save(
+                invitation(
+                    familyId = requireNotNull(family.id),
+                    invitedByParent = parent,
+                    email = "grandma@example.com",
+                    status = PENDING,
+                    expiresAt = Instant.parse("2026-01-08T00:00:00Z"),
+                ),
+            )
+
+        executeViewerParentInvitations(parentId = requireNotNull(parent.id))
+            .path("viewer.families[0].parentInvitations[0].status")
+            .entity<String>()
+            .isEqualTo("EXPIRED")
+
+        assertThat(parentInvitationRepository.findById(requireNotNull(invitation.id)).orElseThrow().status)
+            .isEqualTo(EXPIRED)
     }
 
     @Test
@@ -136,6 +163,39 @@ class ParentInvitationMutationIntegrationTest : GraphQlControllerIntegrationTest
             }
     }
 
+    @Test
+    fun `revokeParentInvitation expires stale pending invitations before rejecting revocation`() {
+        val parent = parentRepository.save(parent(name = "Jane Doe"))
+        val family = familyRepository.save(family(name = "Family One"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, relation = "Mom"))
+        val invitation =
+            parentInvitationRepository.save(
+                invitation(
+                    familyId = requireNotNull(family.id),
+                    invitedByParent = parent,
+                    email = "grandma@example.com",
+                    status = PENDING,
+                    expiresAt = Instant.parse("2026-01-08T00:00:00Z"),
+                ),
+            )
+
+        executeRevokeInvitation(
+            parentId = requireNotNull(parent.id),
+            invitationId = requireNotNull(invitation.id),
+        ).errors()
+            .satisfy { errors ->
+                assertThat(errors).hasSize(1)
+                assertGraphQlError(
+                    error = errors.single(),
+                    message = "Only pending invitations can be revoked",
+                    classification = "BAD_REQUEST",
+                )
+            }
+
+        assertThat(parentInvitationRepository.findById(requireNotNull(invitation.id)).orElseThrow().status)
+            .isEqualTo(EXPIRED)
+    }
+
     private fun executeInviteParent(
         parentId: Long,
         input: Map<String, Any>,
@@ -151,6 +211,11 @@ class ParentInvitationMutationIntegrationTest : GraphQlControllerIntegrationTest
         .document(revokeParentDocument)
         .variable("input", mapOf("invitationId" to invitationId))
         .execute()
+
+    private fun executeViewerParentInvitations(parentId: Long) =
+        authenticatedGraphQlTester(parentId)
+            .document(viewerParentInvitationsDocument)
+            .execute()
 
     private fun assertGraphQlError(
         error: ResponseError,
@@ -193,12 +258,14 @@ class ParentInvitationMutationIntegrationTest : GraphQlControllerIntegrationTest
         invitedByParent: ParentEntity,
         email: String,
         status: dk.frankbille.iou.invitation.ParentInvitationStatus,
+        expiresAt: Instant? = null,
     ) = ParentInvitationEntity().apply {
         this.familyId = familyId
         this.invitedByParent = invitedByParent
         this.email = email
         this.status = status
         this.createdAt = Instant.parse("2026-01-01T00:00:00Z")
+        this.expiresAt = expiresAt
         this.invitationNonce = "nonce-${email.substringBefore('@')}-${status.name.lowercase()}"
     }
 }
@@ -211,6 +278,7 @@ private val inviteParentDocument =
           id
           email
           status
+          expiresAt
         }
       }
     }
@@ -223,6 +291,22 @@ private val revokeParentDocument =
         invitation {
           id
           status
+        }
+      }
+    }
+    """.trimIndent()
+
+private val viewerParentInvitationsDocument =
+    """
+    query ViewerParentInvitations {
+      viewer {
+        families {
+          id
+          parentInvitations {
+            id
+            status
+            expiresAt
+          }
         }
       }
     }

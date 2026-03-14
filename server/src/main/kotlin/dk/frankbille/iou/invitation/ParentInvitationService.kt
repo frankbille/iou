@@ -16,7 +16,9 @@ import dk.frankbille.iou.security.IsParent
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset.UTC
 import java.util.UUID
 
 @Service
@@ -28,14 +30,20 @@ class ParentInvitationService(
     private val currentViewer: CurrentViewer,
     private val familyEventRecorder: FamilyEventRecorder,
 ) {
+    private val invitationLifetime: Duration = Duration.ofDays(7)
+
+    @Transactional
     @HasAccessToFamily
     fun getByFamilyId(familyId: Long): List<ParentInvitation> =
-        parentInvitationRepository.findAllByFamilyIdOrderByCreatedAtDesc(familyId).map { it.toDto() }
+        parentInvitationRepository
+            .findAllByFamilyIdOrderByCreatedAtDesc(familyId)
+            .map { reconcileExpiredPendingInvitation(it).toDto() }
 
     @Transactional
     @HasAccessToFamilyAndIsParent
     fun inviteParentToFamily(input: InviteParentToFamilyInput): ParentInvitation {
         familyRepository.findById(input.familyId).orElseThrow()
+        val createdAt = Instant.now()
 
         return parentInvitationRepository
             .save(
@@ -43,7 +51,8 @@ class ParentInvitationService(
                     familyId = input.familyId
                     invitedByParent = currentParentEntity()
                     email = input.email.trim().lowercase()
-                    createdAt = Instant.now()
+                    this.createdAt = createdAt
+                    expiresAt = createdAt.plus(invitationLifetime)
                     invitationNonce = UUID.randomUUID().toString()
                 },
             ).toDto()
@@ -52,13 +61,13 @@ class ParentInvitationService(
             }
     }
 
-    @Transactional
     @IsParent
     @FamilyScopeCheck("@familyScopeResolver.invitationFamilyId(#input.invitationId)")
+    @Transactional(noRollbackFor = [InvitationNotPendingException::class])
     fun revokeParentInvitation(input: RevokeParentInvitationInput): ParentInvitation {
-        val invitation = parentInvitationRepository.findById(input.invitationId).orElseThrow()
+        val invitation = reconcileExpiredPendingInvitation(parentInvitationRepository.findById(input.invitationId).orElseThrow())
         if (invitation.status != ParentInvitationStatus.PENDING) {
-            throw IllegalArgumentException("Only pending invitations can be revoked")
+            throw InvitationNotPendingException()
         }
 
         invitation.status = ParentInvitationStatus.REVOKED
@@ -71,6 +80,18 @@ class ParentInvitationService(
         parentRepository
             .findById(currentViewer.parentId())
             .orElseThrow { AccessDeniedException("Authenticated parent ${currentViewer.parentId()} was not found") }
+
+    private fun reconcileExpiredPendingInvitation(invitation: ParentInvitationEntity): ParentInvitationEntity {
+        val expiresAt = invitation.expiresAt
+        if (invitation.status != ParentInvitationStatus.PENDING || expiresAt == null || expiresAt.isAfter(Instant.now())) {
+            return invitation
+        }
+
+        invitation.status = ParentInvitationStatus.EXPIRED
+        return parentInvitationRepository.save(invitation).also {
+            familyEventRecorder.record(ParentInvitationChangedEvent(it.toDto()))
+        }
+    }
 }
 
 fun ParentInvitationEntity.toDto(): ParentInvitation =
@@ -78,10 +99,12 @@ fun ParentInvitationEntity.toDto(): ParentInvitation =
         id = requireNotNull(id),
         email = email,
         status = status,
-        createdAt = createdAt,
-        acceptedAt = acceptedAt,
-        expiresAt = expiresAt,
+        createdAt = createdAt.atOffset(UTC),
+        acceptedAt = acceptedAt?.atOffset(UTC),
+        expiresAt = expiresAt?.atOffset(UTC),
         familyId = familyId,
         invitedBy = invitedByParent.toDto(),
         resolvedParentId = resolvedParent?.id,
     )
+
+private class InvitationNotPendingException : IllegalArgumentException("Only pending invitations can be revoked")
