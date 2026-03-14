@@ -17,6 +17,11 @@ annotation class IsParent
 
 @Target(CLASS, FUNCTION)
 @Retention(RUNTIME)
+@PreAuthorize(IS_CHILD)
+annotation class IsChild
+
+@Target(CLASS, FUNCTION)
+@Retention(RUNTIME)
 @PreAuthorize("($HAS_ACCESS_TO_FAMILY) and $IS_PARENT")
 annotation class HasAccessToFamilyAndIsParent
 
@@ -24,3 +29,4 @@ private const val HAS_ACCESS_TO_FAMILY =
     "(#input != null and hasAuthority('FAMILY_' + #input.familyId)) or hasAuthority('FAMILY_' + #familyId)"
 
 private const val IS_PARENT = "hasRole('PARENT')"
+private const val IS_CHILD = "hasRole('CHILD')"

@@ -1,7 +1,11 @@
 package dk.frankbille.iou.security
 
+import dk.frankbille.iou.child.ChildEntity
+import dk.frankbille.iou.child.ChildRepository
 import dk.frankbille.iou.family.CurrencyKind.ISO_CURRENCY
 import dk.frankbille.iou.family.CurrencyPosition.PREFIX
+import dk.frankbille.iou.family.FamilyChildEntity
+import dk.frankbille.iou.family.FamilyChildRepository
 import dk.frankbille.iou.family.FamilyEntity
 import dk.frankbille.iou.family.FamilyParentEntity
 import dk.frankbille.iou.family.FamilyParentRepository
@@ -22,10 +26,16 @@ class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
     private lateinit var parentRepository: ParentRepository
 
     @Autowired
+    private lateinit var childRepository: ChildRepository
+
+    @Autowired
     private lateinit var familyRepository: FamilyRepository
 
     @Autowired
     private lateinit var familyParentRepository: FamilyParentRepository
+
+    @Autowired
+    private lateinit var familyChildRepository: FamilyChildRepository
 
     @Autowired
     private lateinit var familyService: FamilyService
@@ -83,6 +93,52 @@ class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
     }
 
     @Test
+    fun `viewer is resolved from authenticated child and families are membership scoped`() {
+        val child = childRepository.save(child(name = "Ava Doe"))
+        val otherChild = childRepository.save(child(name = "Noah Doe"))
+
+        val authorizedFamily = familyRepository.save(family(name = "Authorized family"))
+        val otherFamily = familyRepository.save(family(name = "Other family"))
+
+        familyChildRepository.save(
+            familyChild(
+                familyId = requireNotNull(authorizedFamily.id),
+                child = child,
+                relation = "Daughter",
+            ),
+        )
+        familyChildRepository.save(
+            familyChild(
+                familyId = requireNotNull(otherFamily.id),
+                child = otherChild,
+                relation = "Son",
+            ),
+        )
+
+        authenticatedChildGraphQlTester(child.id!!)
+            .document(viewerQuery)
+            .execute()
+            .path("$.data.viewer.person.__typename")
+            .entity<String>()
+            .isEqualTo("Child")
+            .path("$.data.viewer.person.id")
+            .entity<Long>()
+            .isEqualTo(child.id!!)
+            .path("$.data.viewer.person.name")
+            .entity<String>()
+            .isEqualTo("Ava Doe")
+            .path("$.data.viewer.families.length()")
+            .entity<Long>()
+            .isEqualTo(1L)
+            .path("$.data.viewer.families[0].id")
+            .entity<Long>()
+            .isEqualTo(authorizedFamily.id!!)
+            .path("$.data.viewer.families[0].name")
+            .entity<String>()
+            .isEqualTo("Authorized family")
+    }
+
+    @Test
     @WithAuthenticatedParent(parentId = 1L, familyIds = [1L])
     fun `family access is denied when parent is not a member`() {
         val authorizedParent = parentRepository.save(parent(name = "Jane Doe"))
@@ -114,6 +170,11 @@ class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
             this.name = name
         }
 
+    private fun child(name: String) =
+        ChildEntity().apply {
+            this.name = name
+        }
+
     private fun family(name: String) =
         FamilyEntity().apply {
             this.name = name
@@ -135,6 +196,16 @@ class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
         this.parent = parent
         this.relation = relation
     }
+
+    private fun familyChild(
+        familyId: Long,
+        child: ChildEntity,
+        relation: String,
+    ) = FamilyChildEntity().apply {
+        this.familyId = familyId
+        this.child = child
+        this.relation = relation
+    }
 }
 
 @Language("GraphQL")
@@ -143,8 +214,12 @@ private val viewerQuery =
     query ViewerQuery {
         viewer {
             person {
+                __typename
                 id
                 ... on Parent {
+                    name
+                }
+                ... on Child {
                     name
                 }
             }

@@ -75,9 +75,9 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
                 ),
             )
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedChildGraphQlTester(requireNotNull(child.id))
             .document(completeOneOffTaskDocument)
-            .variable("input", mapOf("taskId" to requireNotNull(task.id), "childId" to requireNotNull(child.id)))
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
             .path("completeOneOffTask.task.status")
             .entity<String>()
@@ -85,6 +85,9 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
             .path("completeOneOffTask.rewardTransaction.toAccount.id")
             .entity<String>()
             .isEqualTo(requireNotNull(rewardAccount.id).toString())
+            .path("completeOneOffTask.rewardTransaction.owner.id")
+            .entity<String>()
+            .isEqualTo(requireNotNull(parent.id).toString())
             .path("completeOneOffTask.rewardTransaction.taskCompletion.__typename")
             .entity<String>()
             .isEqualTo("OneOffTask")
@@ -100,9 +103,11 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
 
     @Test
     fun `approveOneOffTask creates reward transaction for ON_APPROVAL`() {
-        val parent = parentRepository.save(parent("Jane Doe"))
+        val creatorParent = parentRepository.save(parent("Jane Doe"))
+        val approvingParent = parentRepository.save(parent("John Doe"))
         val family = familyRepository.save(family("Family One"))
-        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, "Mom"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), creatorParent, "Mom"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), approvingParent, "Dad"))
         val rewardAccount = moneyAccountRepository.save(moneyAccount(requireNotNull(family.id), "Allowance Wallet", MoneyAccountKind.CASH))
         family.defaultRewardAccount = rewardAccount
         familyRepository.save(family)
@@ -113,31 +118,34 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
             oneOffTaskRepository.save(
                 oneOffTask(
                     familyId = requireNotNull(family.id),
-                    parent = parent,
+                    parent = creatorParent,
                     category = category,
                     rewardPayoutPolicy = RewardPayoutPolicy.ON_APPROVAL,
                 ),
             )
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedChildGraphQlTester(requireNotNull(child.id))
             .document(completeOneOffTaskDocument)
-            .variable("input", mapOf("taskId" to requireNotNull(task.id), "childId" to requireNotNull(child.id)))
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedGraphQlTester(requireNotNull(approvingParent.id))
             .document(approveOneOffTaskDocument)
             .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
             .path("approveOneOffTask.task.status")
             .entity<String>()
             .isEqualTo("APPROVED")
+            .path("approveOneOffTask.rewardTransaction.owner.id")
+            .entity<String>()
+            .isEqualTo(requireNotNull(approvingParent.id).toString())
             .path("approveOneOffTask.rewardTransaction.taskCompletion.__typename")
             .entity<String>()
             .isEqualTo("OneOffTask")
 
         val savedTask = oneOffTaskRepository.findById(requireNotNull(task.id)).orElseThrow()
         assertThat(savedTask.status).isEqualTo(TaskCompletionStatus.APPROVED)
-        assertThat(savedTask.approvedByParent?.id).isEqualTo(parent.id)
+        assertThat(savedTask.approvedByParent?.id).isEqualTo(approvingParent.id)
         assertThat(rewardTransactionRepository.findByOneOffTaskId(requireNotNull(task.id))).isNotNull
     }
 
@@ -162,9 +170,9 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
                 ),
             )
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedChildGraphQlTester(requireNotNull(child.id))
             .document(completeOneOffTaskDocument)
-            .variable("input", mapOf("taskId" to requireNotNull(task.id), "childId" to requireNotNull(child.id)))
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
 
         authenticatedGraphQlTester(requireNotNull(parent.id))
@@ -183,9 +191,8 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
     }
 
     @Test
-    fun `completeOneOffTask rejects parents outside the family`() {
+    fun `completeOneOffTask rejects authenticated parents`() {
         val memberParent = parentRepository.save(parent("Jane Doe"))
-        val outsiderParent = parentRepository.save(parent("John Doe"))
         val family = familyRepository.save(family("Family One"))
         familyParentRepository.save(familyParent(requireNotNull(family.id), memberParent, "Mom"))
         val category = taskCategoryRepository.save(taskCategory(requireNotNull(family.id), "Chores"))
@@ -200,17 +207,54 @@ class OneOffTaskWorkflowMutationIntegrationTest : GraphQlControllerIntegrationTe
                 ),
             )
 
-        authenticatedGraphQlTester(requireNotNull(outsiderParent.id))
+        authenticatedGraphQlTester(requireNotNull(memberParent.id))
             .document(completeOneOffTaskDocument)
-            .variable("input", mapOf("taskId" to requireNotNull(task.id), "childId" to requireNotNull(child.id)))
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
             .errors()
             .satisfy { errors ->
                 assertThat(errors).hasSize(1)
                 assertGraphQlError(
                     error = errors.single(),
-                    message = "Resource not found",
-                    classification = "NOT_FOUND",
+                    message = "Access Denied",
+                    classification = "FORBIDDEN",
+                )
+            }
+    }
+
+    @Test
+    fun `completeOneOffTask rejects ineligible authenticated child`() {
+        val parent = parentRepository.save(parent("Jane Doe"))
+        val family = familyRepository.save(family("Family One"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, "Mom"))
+        val category = taskCategoryRepository.save(taskCategory(requireNotNull(family.id), "Chores"))
+        val eligibleChild = childRepository.save(child("Ava"))
+        val ineligibleChild = childRepository.save(child("Noah"))
+        familyChildRepository.save(familyChild(requireNotNull(family.id), eligibleChild, "Daughter"))
+        familyChildRepository.save(familyChild(requireNotNull(family.id), ineligibleChild, "Son"))
+        val task =
+            oneOffTaskRepository.save(
+                oneOffTask(
+                    familyId = requireNotNull(family.id),
+                    parent = parent,
+                    category = category,
+                ).apply {
+                    eligibilityMode = EligibilityMode.RESTRICTED
+                    eligibleChildren = mutableSetOf(eligibleChild)
+                },
+            )
+
+        authenticatedChildGraphQlTester(requireNotNull(ineligibleChild.id))
+            .document(completeOneOffTaskDocument)
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
+            .execute()
+            .errors()
+            .satisfy { errors ->
+                assertThat(errors).hasSize(1)
+                assertGraphQlError(
+                    error = errors.single(),
+                    message = "Child ${requireNotNull(ineligibleChild.id)} is not eligible to complete task ${requireNotNull(task.id)}",
+                    classification = "BAD_REQUEST",
                 )
             }
     }
@@ -313,6 +357,9 @@ private val completeOneOffTaskDocument =
         }
         rewardTransaction {
           id
+          owner {
+            id
+          }
           toAccount {
             id
           }
@@ -337,6 +384,9 @@ private val approveOneOffTaskDocument =
         }
         rewardTransaction {
           id
+          owner {
+            id
+          }
           taskCompletion {
             __typename
             ... on OneOffTask {

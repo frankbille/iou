@@ -17,6 +17,9 @@ interface FamilyChildRepository : JpaRepository<FamilyChildEntity, Long> {
         childIds: Collection<Long>,
     ): List<Long>
 
+    @Query("SELECT fc.familyId FROM FamilyChildEntity fc WHERE fc.child.id = :childId")
+    fun findFamilyIdByChildId(childId: Long): List<Long>
+
     @Query("SELECT fc.familyId FROM FamilyChildEntity fc WHERE fc.id = :id")
     fun findFamilyIdById(id: Long): Long?
 }

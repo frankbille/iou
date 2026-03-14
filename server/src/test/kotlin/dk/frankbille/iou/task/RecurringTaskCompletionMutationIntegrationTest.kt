@@ -85,13 +85,16 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
                 ),
             )
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedChildGraphQlTester(requireNotNull(child.id))
             .document(completeRecurringTaskDocument)
-            .variable("input", mapOf("taskId" to requireNotNull(task.id), "childId" to requireNotNull(child.id)))
+            .variable("input", mapOf("taskId" to requireNotNull(task.id)))
             .execute()
             .path("completeRecurringTask.completion.occurrenceDate")
             .entity<String>()
             .isEqualTo(latestEligibleDate.toString())
+            .path("completeRecurringTask.rewardTransaction.owner.id")
+            .entity<String>()
+            .isEqualTo(requireNotNull(parent.id).toString())
             .path("completeRecurringTask.rewardTransaction.taskCompletion.__typename")
             .entity<String>()
             .isEqualTo("RecurringTaskCompletion")
@@ -129,13 +132,12 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
             recurringCompletion(task = task, child = firstChild, occurrenceDate = occurrenceDate),
         )
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedChildGraphQlTester(requireNotNull(secondChild.id))
             .document(completeRecurringTaskDocument)
             .variable(
                 "input",
                 mapOf(
                     "taskId" to requireNotNull(task.id),
-                    "childId" to requireNotNull(secondChild.id),
                     "occurrenceDate" to occurrenceDate.toString(),
                 ),
             ).execute()
@@ -152,9 +154,11 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
 
     @Test
     fun `approveRecurringTaskCompletion creates reward transaction for ON_APPROVAL`() {
-        val parent = parentRepository.save(parent("Jane Doe"))
+        val creatorParent = parentRepository.save(parent("Jane Doe"))
+        val approvingParent = parentRepository.save(parent("John Doe"))
         val family = familyRepository.save(family("Family One"))
-        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, "Mom"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), creatorParent, "Mom"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), approvingParent, "Dad"))
         val rewardAccount = moneyAccountRepository.save(moneyAccount(requireNotNull(family.id), "Allowance Wallet", MoneyAccountKind.CASH))
         family.defaultRewardAccount = rewardAccount
         familyRepository.save(family)
@@ -166,7 +170,7 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
             recurringTaskRepository.save(
                 recurringTask(
                     familyId = requireNotNull(family.id),
-                    parent = parent,
+                    parent = creatorParent,
                     category = category,
                     rewardPayoutPolicy = RewardPayoutPolicy.ON_APPROVAL,
                     daysOfWeek = setOf(occurrenceDate.dayOfWeek),
@@ -177,13 +181,12 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
             )
 
         val completionId =
-            authenticatedGraphQlTester(requireNotNull(parent.id))
+            authenticatedChildGraphQlTester(requireNotNull(child.id))
                 .document(completeRecurringTaskDocument)
                 .variable(
                     "input",
                     mapOf(
                         "taskId" to requireNotNull(task.id),
-                        "childId" to requireNotNull(child.id),
                         "occurrenceDate" to occurrenceDate.toString(),
                     ),
                 ).execute()
@@ -192,20 +195,23 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
                 .get()
                 .toLong()
 
-        authenticatedGraphQlTester(requireNotNull(parent.id))
+        authenticatedGraphQlTester(requireNotNull(approvingParent.id))
             .document(approveRecurringTaskCompletionDocument)
             .variable("input", mapOf("completionId" to completionId))
             .execute()
             .path("approveRecurringTaskCompletion.completion.status")
             .entity<String>()
             .isEqualTo("APPROVED")
+            .path("approveRecurringTaskCompletion.rewardTransaction.owner.id")
+            .entity<String>()
+            .isEqualTo(requireNotNull(approvingParent.id).toString())
             .path("approveRecurringTaskCompletion.rewardTransaction.taskCompletion.__typename")
             .entity<String>()
             .isEqualTo("RecurringTaskCompletion")
 
         val savedCompletion = recurringTaskCompletionRepository.findById(completionId).orElseThrow()
         assertThat(savedCompletion.status).isEqualTo(TaskCompletionStatus.APPROVED)
-        assertThat(savedCompletion.approvedByParent?.id).isEqualTo(parent.id)
+        assertThat(savedCompletion.approvedByParent?.id).isEqualTo(approvingParent.id)
         assertThat(rewardTransactionRepository.findByRecurringTaskCompletionId(completionId)).isNotNull
     }
 
@@ -236,13 +242,12 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
             )
 
         val completionId =
-            authenticatedGraphQlTester(requireNotNull(parent.id))
+            authenticatedChildGraphQlTester(requireNotNull(child.id))
                 .document(completeRecurringTaskDocument)
                 .variable(
                     "input",
                     mapOf(
                         "taskId" to requireNotNull(task.id),
-                        "childId" to requireNotNull(child.id),
                         "occurrenceDate" to occurrenceDate.toString(),
                     ),
                 ).execute()
@@ -305,6 +310,49 @@ class RecurringTaskCompletionMutationIntegrationTest : GraphQlControllerIntegrat
                     error = errors.single(),
                     message = "Resource not found",
                     classification = "NOT_FOUND",
+                )
+            }
+    }
+
+    @Test
+    fun `completeRecurringTask rejects authenticated parents`() {
+        val parent = parentRepository.save(parent("Jane Doe"))
+        val family = familyRepository.save(family("Family One"))
+        familyParentRepository.save(familyParent(requireNotNull(family.id), parent, "Mom"))
+        val category = taskCategoryRepository.save(taskCategory(requireNotNull(family.id), "Chores"))
+        val child = childRepository.save(child("Ava"))
+        familyChildRepository.save(familyChild(requireNotNull(family.id), child, "Daughter"))
+        val occurrenceDate = LocalDate.now()
+        val task =
+            recurringTaskRepository.save(
+                recurringTask(
+                    familyId = requireNotNull(family.id),
+                    parent = parent,
+                    category = category,
+                    rewardPayoutPolicy = RewardPayoutPolicy.ON_COMPLETION,
+                    daysOfWeek = setOf(occurrenceDate.dayOfWeek),
+                    startsOn = occurrenceDate.minusWeeks(3),
+                    endsOn = occurrenceDate.plusWeeks(3),
+                    maxCompletionsPerPeriod = 2,
+                ),
+            )
+
+        authenticatedGraphQlTester(requireNotNull(parent.id))
+            .document(completeRecurringTaskDocument)
+            .variable(
+                "input",
+                mapOf(
+                    "taskId" to requireNotNull(task.id),
+                    "occurrenceDate" to occurrenceDate.toString(),
+                ),
+            ).execute()
+            .errors()
+            .satisfy { errors ->
+                assertThat(errors).hasSize(1)
+                assertGraphQlError(
+                    error = errors.single(),
+                    message = "Access Denied",
+                    classification = "FORBIDDEN",
                 )
             }
     }
@@ -433,6 +481,9 @@ private val completeRecurringTaskDocument =
         }
         rewardTransaction {
           id
+          owner {
+            id
+          }
           taskCompletion {
             __typename
             ... on RecurringTaskCompletion {
@@ -454,6 +505,9 @@ private val approveRecurringTaskCompletionDocument =
         }
         rewardTransaction {
           id
+          owner {
+            id
+          }
           taskCompletion {
             __typename
             ... on RecurringTaskCompletion {

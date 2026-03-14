@@ -97,6 +97,12 @@ abstract class GraphQlControllerIntegrationTest {
         )
 
     protected fun authenticatedGraphQlTester(parentId: Long) =
+        authenticatedGraphQlTesterWithBearerToken(TestJwtFactory.createParentBearerToken(parentId))
+
+    protected fun authenticatedChildGraphQlTester(childId: Long) =
+        authenticatedGraphQlTesterWithBearerToken(TestJwtFactory.createChildBearerToken(childId))
+
+    private fun authenticatedGraphQlTesterWithBearerToken(bearerToken: String) =
         HttpGraphQlTester
             .create(
                 MockMvcWebTestClient
@@ -107,6 +113,6 @@ abstract class GraphQlControllerIntegrationTest {
                     .build(),
             ).mutate()
             .headers { headers ->
-                headers.setBearerAuth(TestJwtFactory.createBearerToken(parentId))
+                headers.setBearerAuth(bearerToken)
             }.build()
 }

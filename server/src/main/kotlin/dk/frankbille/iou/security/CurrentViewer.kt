@@ -6,9 +6,15 @@ import org.springframework.stereotype.Component
 
 @Component
 class CurrentViewer {
-    fun parentId(): Long = authenticatedParent().parentId
+    fun parentId(): Long = authenticatedViewer().parentId
 
-    fun authenticatedParent(): AuthenticatedParentPrincipal =
-        SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedParentPrincipal
-            ?: throw AuthenticationCredentialsNotFoundException("No authenticated parent is available")
+    fun childId(): Long = authenticatedViewer().childId
+
+    fun isParent(): Boolean = authenticatedViewer().isParent
+
+    fun isChild(): Boolean = authenticatedViewer().isChild
+
+    fun authenticatedViewer(): AuthenticatedViewerPrincipal =
+        SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedViewerPrincipal
+            ?: throw AuthenticationCredentialsNotFoundException("No authenticated viewer is available")
 }
