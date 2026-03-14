@@ -220,7 +220,7 @@ class FamilyEventSubscriptionIntegrationTest : GraphQlControllerIntegrationTest(
         SecurityContextHolder
             .createEmptyContext()
             .apply {
-                authentication = TestJwtFactory.createAuthentication(parentId, familyIds = listOf(familyId))
+                authentication = TestJwtFactory.createParentAuthentication(parentId, familyIds = listOf(familyId))
             }.also(SecurityContextHolder::setContext)
     }
 

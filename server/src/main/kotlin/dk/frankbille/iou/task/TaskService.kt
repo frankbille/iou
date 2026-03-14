@@ -19,6 +19,7 @@ import dk.frankbille.iou.security.CurrentViewer
 import dk.frankbille.iou.security.FamilyScopeCheck
 import dk.frankbille.iou.security.HasAccessToFamily
 import dk.frankbille.iou.security.HasAccessToFamilyAndIsParent
+import dk.frankbille.iou.security.IsChild
 import dk.frankbille.iou.security.IsParent
 import dk.frankbille.iou.taskcategory.TaskCategoryEntity
 import dk.frankbille.iou.taskcategory.TaskCategoryRepository
@@ -234,7 +235,7 @@ class TaskService(
     }
 
     @Transactional
-    @IsParent
+    @IsChild
     @FamilyScopeCheck("@familyScopeResolver.taskFamilyId(#input.taskId)")
     fun completeOneOffTask(input: CompleteOneOffTaskInput): CompleteOneOffTaskPayload {
         val task = oneOffTaskRepository.findById(input.taskId).orElseThrow()
@@ -242,21 +243,23 @@ class TaskService(
             throw IllegalArgumentException("One-off task ${input.taskId} is not available for completion")
         }
 
-        val childMembership = resolveFamilyChildMembership(task.familyId, input.childId)
-        ensureChildEligible(task, input.childId)
+        val childId = currentViewer.childId()
+        val childMembership = resolveFamilyChildMembership(task.familyId, childId)
+        ensureChildEligible(task, childId)
         val completedAt = Instant.now()
         task.completedChild = childMembership.child
         task.completedAt = completedAt
         task.status = TaskCompletionStatus.COMPLETED
-        task.updatedByParent = currentParentEntity()
+        task.updatedByParent = task.createdByParent
         task.updatedAt = completedAt
 
         val rewardTransaction =
-            when (effectiveRewardPayoutPolicy(task.familyId, input.childId, task.rewardPayoutPolicy)) {
+            when (effectiveRewardPayoutPolicy(task.familyId, childId, task.rewardPayoutPolicy)) {
                 RewardPayoutPolicy.ON_COMPLETION -> {
                     transactionService.createRewardTransaction(
                         familyId = task.familyId,
                         child = childMembership.child,
+                        ownerParent = task.createdByParent,
                         amountMinor = task.rewardAmountMinor,
                         oneOffTask = task,
                     )
@@ -289,16 +292,18 @@ class TaskService(
         }
 
         val approvalTime = Instant.now()
+        val approvingParent = currentParentEntity()
         task.status = TaskCompletionStatus.APPROVED
         task.approvedAt = approvalTime
-        task.approvedByParent = currentParentEntity()
-        task.updatedByParent = requireNotNull(task.approvedByParent)
+        task.approvedByParent = approvingParent
+        task.updatedByParent = approvingParent
         task.updatedAt = approvalTime
 
         val rewardTransaction =
             transactionService.createRewardTransaction(
                 familyId = task.familyId,
                 child = completedChild,
+                ownerParent = approvingParent,
                 amountMinor = task.rewardAmountMinor,
                 oneOffTask = task,
             )
@@ -330,7 +335,7 @@ class TaskService(
     }
 
     @Transactional
-    @IsParent
+    @IsChild
     @FamilyScopeCheck("@familyScopeResolver.taskFamilyId(#input.taskId)")
     fun completeRecurringTask(input: CompleteRecurringTaskInput): CompleteRecurringTaskPayload {
         val task = recurringTaskRepository.findById(input.taskId).orElseThrow()
@@ -338,20 +343,21 @@ class TaskService(
             throw IllegalArgumentException("Recurring task ${input.taskId} is not active")
         }
 
-        val childMembership = resolveFamilyChildMembership(task.familyId, input.childId)
-        ensureChildEligible(task, input.childId)
+        val childId = currentViewer.childId()
+        val childMembership = resolveFamilyChildMembership(task.familyId, childId)
+        ensureChildEligible(task, childId)
         val family = familyRepository.findById(task.familyId).orElseThrow()
         val occurrenceDate = resolveOccurrenceDate(task, family.recurringTaskCompletionGracePeriodDays, input.occurrenceDate)
 
         if (recurringTaskCompletionRepository.findByRecurringTaskIdAndChildIdAndOccurrenceDate(
                 requireNotNull(task.id),
-                input.childId,
+                childId,
                 occurrenceDate,
             ) !=
             null
         ) {
             throw IllegalArgumentException(
-                "Recurring task ${input.taskId} already has a completion for child ${input.childId} on $occurrenceDate",
+                "Recurring task ${input.taskId} already has a completion for child $childId on $occurrenceDate",
             )
         }
 
@@ -380,11 +386,12 @@ class TaskService(
         )
 
         val rewardTransaction =
-            when (effectiveRewardPayoutPolicy(task.familyId, input.childId, task.rewardPayoutPolicy)) {
+            when (effectiveRewardPayoutPolicy(task.familyId, childId, task.rewardPayoutPolicy)) {
                 RewardPayoutPolicy.ON_COMPLETION -> {
                     transactionService.createRewardTransaction(
                         familyId = task.familyId,
                         child = childMembership.child,
+                        ownerParent = task.createdByParent,
                         amountMinor = task.rewardAmountMinor,
                         recurringTaskCompletion = completion,
                     )
@@ -415,14 +422,16 @@ class TaskService(
         }
 
         val approvalTime = Instant.now()
+        val approvingParent = currentParentEntity()
         completion.status = TaskCompletionStatus.APPROVED
         completion.approvedAt = approvalTime
-        completion.approvedByParent = currentParentEntity()
+        completion.approvedByParent = approvingParent
 
         val rewardTransaction =
             transactionService.createRewardTransaction(
                 familyId = task.familyId,
                 child = completion.child,
+                ownerParent = approvingParent,
                 amountMinor = task.rewardAmountMinor,
                 recurringTaskCompletion = completion,
             )

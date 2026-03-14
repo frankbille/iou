@@ -222,7 +222,6 @@ data class TaskRecurrenceInput(
 
 data class CompleteOneOffTaskInput(
     val taskId: Long,
-    val childId: Long,
 )
 
 data class CompleteOneOffTaskPayload(
@@ -249,7 +248,6 @@ data class ResetOneOffTaskToAvailablePayload(
 
 data class CompleteRecurringTaskInput(
     val taskId: Long,
-    val childId: Long,
     val occurrenceDate: LocalDate?,
 )
 

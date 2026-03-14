@@ -152,7 +152,6 @@ type DeleteOneOffTaskPayload {
 
 input CompleteOneOffTaskInput {
     taskId: ID!
-    childId: ID!
 }
 
 type CompleteOneOffTaskPayload {
@@ -328,7 +327,6 @@ type RecurringTaskCompletion implements TaskCompletion {
 
 input CompleteRecurringTaskInput {
     taskId: ID!
-    childId: ID!
     occurrenceDate: Date
 }
 

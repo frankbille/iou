@@ -163,6 +163,7 @@ class TransactionService(
     fun createRewardTransaction(
         familyId: Long,
         child: ChildEntity,
+        ownerParent: ParentEntity,
         amountMinor: Int,
         oneOffTask: OneOffTaskEntity? = null,
         recurringTaskCompletion: RecurringTaskCompletionEntity? = null,
@@ -176,7 +177,7 @@ class TransactionService(
             .save(
                 RewardTransactionEntity().apply {
                     this.familyId = familyId
-                    ownerParent = currentParentEntity()
+                    this.ownerParent = ownerParent
                     this.child = child
                     accountOne = defaultRewardAccount
                     this.amountMinor = amountMinor

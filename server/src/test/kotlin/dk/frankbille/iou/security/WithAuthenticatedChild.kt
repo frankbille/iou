@@ -7,18 +7,18 @@ import org.springframework.security.test.context.support.WithSecurityContextFact
 
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-@WithSecurityContext(factory = WithAuthenticatedParentSecurityContextFactory::class)
-annotation class WithAuthenticatedParent(
-    val parentId: Long = 1L,
+@WithSecurityContext(factory = WithAuthenticatedChildSecurityContextFactory::class)
+annotation class WithAuthenticatedChild(
+    val childId: Long = 1L,
     val familyIds: LongArray = [],
 )
 
-class WithAuthenticatedParentSecurityContextFactory : WithSecurityContextFactory<WithAuthenticatedParent> {
-    override fun createSecurityContext(annotation: WithAuthenticatedParent): SecurityContext =
+class WithAuthenticatedChildSecurityContextFactory : WithSecurityContextFactory<WithAuthenticatedChild> {
+    override fun createSecurityContext(annotation: WithAuthenticatedChild): SecurityContext =
         SecurityContextHolder.createEmptyContext().apply {
             authentication =
-                TestJwtFactory.createParentAuthentication(
-                    parentId = annotation.parentId,
+                TestJwtFactory.createChildAuthentication(
+                    childId = annotation.childId,
                     familyIds = annotation.familyIds.toList(),
                 )
         }

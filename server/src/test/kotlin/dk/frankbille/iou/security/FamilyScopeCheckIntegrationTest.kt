@@ -88,7 +88,7 @@ class FamilyScopeCheckIntegrationTest : GraphQlControllerIntegrationTest() {
     }
 
     @Test
-    @WithAuthenticatedParent(parentId = 1L, familyIds = [1L], includeParentRole = false)
+    @WithAuthenticatedChild(childId = 1L, familyIds = [1L])
     fun `family scope check composes with spring security role checks`() {
         val family = familyRepository.save(family(name = "Authorized family"))
 

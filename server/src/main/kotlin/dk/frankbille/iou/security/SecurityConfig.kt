@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec
 @EnableMethodSecurity
 @EnableConfigurationProperties(SecurityProperties::class)
 class SecurityConfig(
-    private val authenticatedParentJwtAuthenticationConverter: AuthenticatedParentJwtAuthenticationConverter,
+    private val authenticatedViewerJwtAuthenticationConverter: AuthenticatedViewerJwtAuthenticationConverter,
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
@@ -36,7 +36,7 @@ class SecurityConfig(
                     .denyAll()
             }.oauth2ResourceServer { oauth2 ->
                 oauth2.jwt { jwt ->
-                    jwt.jwtAuthenticationConverter(authenticatedParentJwtAuthenticationConverter)
+                    jwt.jwtAuthenticationConverter(authenticatedViewerJwtAuthenticationConverter)
                 }
             }.build()
 

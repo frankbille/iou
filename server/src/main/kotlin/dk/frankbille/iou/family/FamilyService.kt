@@ -1,5 +1,6 @@
 package dk.frankbille.iou.family
 
+import dk.frankbille.iou.child.ChildService
 import dk.frankbille.iou.child.toDto
 import dk.frankbille.iou.events.FamilyDeletedEvent
 import dk.frankbille.iou.events.FamilyEventRecorder
@@ -32,6 +33,7 @@ class FamilyService(
     private val moneyAccountRepository: MoneyAccountRepository,
     private val parentRepository: ParentRepository,
     private val currentViewer: CurrentViewer,
+    private val childService: ChildService,
     private val parentService: ParentService,
     private val familyEventRecorder: FamilyEventRecorder,
 ) {
@@ -43,7 +45,12 @@ class FamilyService(
                 .associateBy { requireNotNull(it.id) }
 
         return Viewer(
-            person = parentService.getViewerPerson(),
+            person =
+                when {
+                    currentViewer.isParent() -> parentService.getViewerPerson()
+                    currentViewer.isChild() -> childService.getViewerPerson()
+                    else -> throw IllegalStateException("Viewer is neither parent nor child")
+                },
             families = accessibleFamilyIds.mapNotNull { familyId -> familiesById[familyId]?.toDto() },
         )
     }
