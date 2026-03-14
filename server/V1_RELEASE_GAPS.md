@@ -4,7 +4,7 @@ This file tracks implementation gaps found by comparing the `server` module agai
 
 Review status:
 - Reviewed query, mutation, schema-mapping, service, security, and invitation/task/transaction code paths.
-- Ran `./gradlew :server:test` on 2026-03-13. The current test suite passes.
+- Ran `./gradlew :server:test` on 2026-03-14. The current test suite passes.
 
 ## Completed
 
@@ -24,49 +24,39 @@ Notes:
 - The implementation now covers the family-level realtime sync path that was previously only declared in the schema/spec.
 - The full server test suite passes with the subscription work included.
 
+### Child-authenticated viewer flow
+
+Status:
+- Done on 2026-03-14
+
+Implemented:
+- Added authentication support for child principals
+- Added a viewer path that resolves either a parent or a child identity
+- Added authorization rules for child access
+- Added tests for child-authenticated GraphQL access
+
+Notes:
+- The authenticated viewer path now matches the schema and spec expectation that `viewer.person` can resolve to either `Parent` or `Child`.
+- The remaining V1 server work now moves to shared client/server business logic.
+
+### Parent invitation expiry lifecycle
+
+Status:
+- Done on 2026-03-14
+
+Implemented:
+- Added a 7-day expiry policy for new parent invitations
+- Added lazy expiry reconciliation so stale pending invitations transition to `EXPIRED` during reads and revocation attempts
+- Added integration coverage for expiry assignment, expiry-aware reads, and expiry-aware revocation behavior
+
+Notes:
+- Invitation lifecycle behavior now matches the schema and spec expectation that invitations expose `expiresAt` and can transition to `EXPIRED`.
+- Parent invitation GraphQL date-time fields now serialize correctly when `expiresAt` is present.
+- The next V1 server gap is shared client/server business logic.
+
 ## Remaining Gaps
 
-### 1. Child-authenticated viewer flow is not implemented
-
-Why this is a gap:
-- The schema models `Viewer.person` as `Person!`, and `Person` can be either `Parent` or `Child`.
-- `SPEC.md` also describes the authenticated viewer as a parent or child identity.
-- The security and viewer code paths are parent-only today.
-
-What is missing:
-- Authentication support for child principals
-- A viewer abstraction that can resolve either a parent or a child
-- Authorization rules for child access
-- Tests for child-authenticated GraphQL access
-
-Current state:
-- JWT conversion only accepts `Parent` global IDs
-- `CurrentViewer` only exposes `parentId()`
-- `viewer.person` is resolved through `ParentService`
-
-Suggested TODO:
-- Decide whether child sessions are in scope for V1. If yes, implement the full child-authenticated viewer path.
-
-### 2. Parent invitation expiry lifecycle is only modeled, not operational
-
-Why this is a gap:
-- The schema exposes `expiresAt` and `EXPIRED`.
-- `SPEC.md` describes expiring invitations as part of the invitation state model.
-- The current service creates pending invitations and allows revocation, but does not assign an expiry or transition invitations to `EXPIRED`.
-
-What is missing:
-- A policy for setting `expiresAt`
-- Logic to mark invitations as expired
-- Tests for expiry behavior and expiry-aware reads/mutations
-
-Current state:
-- `inviteParentToFamily` sets `email`, `createdAt`, and `invitationNonce`
-- `revokeParentInvitation` transitions only from `PENDING` to `REVOKED`
-
-Suggested TODO:
-- Either implement invitation expiry for V1 or explicitly narrow the V1 invitation lifecycle to `PENDING` and `REVOKED`.
-
-### 3. Shared business logic is not implemented in the shared module
+### 1. Shared business logic is not implemented in the shared module
 
 Why this is a gap:
 - `SPEC.md` says balance derivation, recurrence calculations, and task completion rules should live in shared Kotlin modules used by both client and server.
@@ -95,6 +85,4 @@ These were not included above because the spec explicitly leaves them open or de
 
 ## Recommended Order
 
-1. Child-authenticated viewer flow
-2. Parent invitation expiry
-3. Shared client/server business logic
+1. Shared client/server business logic
