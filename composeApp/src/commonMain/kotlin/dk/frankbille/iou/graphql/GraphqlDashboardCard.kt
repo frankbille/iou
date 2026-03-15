@@ -22,49 +22,55 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
-internal data class FamilyNamePocState(
-    val familyName: String? = null,
-    val status: String = "JWT + normalized cache POC. On web, a network load is also persisted for cold-start cache reads.",
+internal data class GraphqlDashboardState(
+    val dashboardStateLoaded: Boolean = false,
+    val viewerSummary: String? = null,
+    val status: String = "JWT + Apollo snapshot POC. Load a broader family payload and map it into the dashboard cards.",
     val isLoading: Boolean = false,
     val error: String? = null,
 )
 
-internal class FamilyNamePocController(
+internal class GraphqlDashboardController(
     val sessionStore: GraphqlSessionStore = GraphqlSessionStore(),
 ) {
-    private val repository = FamilyNameRepository(sessionStore = sessionStore)
+    private val repository = DashboardRepository(sessionStore = sessionStore)
 
-    var state by mutableStateOf(FamilyNamePocState())
+    var loadedDashboardState by mutableStateOf<dk.frankbille.iou.dashboard.DashboardState?>(null)
+        private set
+
+    var state by mutableStateOf(GraphqlDashboardState())
         private set
 
     suspend fun loadCacheFirst() {
-        runRequest { repository.loadFamilyName() }
+        runRequest { repository.loadDashboard() }
     }
 
     suspend fun readCacheOnly() {
-        runRequest { repository.readCachedFamilyName() }
+        runRequest { repository.readCachedDashboard() }
     }
 
     suspend fun refreshFromNetwork() {
-        runRequest { repository.refreshFamilyName() }
+        runRequest { repository.refreshDashboard() }
     }
 
-    private suspend fun runRequest(block: suspend () -> FamilyNameResult) {
+    private suspend fun runRequest(block: suspend () -> DashboardDataResult) {
         state = state.copy(isLoading = true, error = null)
 
         state =
             try {
                 val result = block()
-                FamilyNamePocState(
-                    familyName = result.familyName,
+                loadedDashboardState = result.dashboardState
+                GraphqlDashboardState(
+                    dashboardStateLoaded = true,
+                    viewerSummary = result.viewerSummary,
                     status =
                         when (result.source) {
-                            FamilyNameSource.CACHE -> {
-                                "Loaded the family name from Apollo cache."
+                            DashboardDataSource.CACHE -> {
+                                "Loaded the mapped household snapshot from Apollo cache."
                             }
 
-                            FamilyNameSource.NETWORK -> {
-                                "Loaded the family name from the server, wrote it into Apollo cache, and persisted it for web cold starts."
+                            DashboardDataSource.NETWORK -> {
+                                "Loaded household data from the server, wrote it into Apollo cache, and persisted the snapshot for cold starts."
                             }
                         },
                     isLoading = false,
@@ -73,20 +79,21 @@ internal class FamilyNamePocController(
             } catch (exception: IllegalStateException) {
                 state.copy(
                     isLoading = false,
-                    error = exception.message ?: "The family name request failed.",
+                    error = exception.message ?: "The GraphQL dashboard request failed.",
                 )
             }
     }
 }
 
 @Composable
-internal fun FamilyNamePocCard(
-    controller: FamilyNamePocController,
+internal fun GraphqlDashboardCard(
+    controller: GraphqlDashboardController,
     onLoadCacheFirst: () -> Unit,
     onReadCacheOnly: () -> Unit,
     onRefreshFromNetwork: () -> Unit,
 ) {
     val state = controller.state
+    val loadedDashboardState = controller.loadedDashboardState
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -98,13 +105,13 @@ internal fun FamilyNamePocCard(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = "GraphQL family-name POC",
+                text = "GraphQL household snapshot",
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
                 text =
-                    "This is intentionally narrow: authenticated Apollo query, normalized cache, " +
-                        "and a family name that survives browser reloads by hydrating Apollo on startup.",
+                    "This now reaches past the family name: viewer, roster, balances, money accounts, tasks, " +
+                        "and recent transaction activity are mapped into the dashboard state.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -156,9 +163,18 @@ internal fun FamilyNamePocCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            state.familyName?.let { familyName ->
+            state.viewerSummary?.let { viewerSummary ->
                 Text(
-                    text = "Loaded family: $familyName",
+                    text = viewerSummary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+            if (state.dashboardStateLoaded && loadedDashboardState != null) {
+                Text(
+                    text =
+                        "Loaded ${loadedDashboardState.children.size} children, ${loadedDashboardState.accounts.size} accounts, " +
+                            "${loadedDashboardState.tasks.size} tasks, and ${loadedDashboardState.activity.size} recent events.",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }

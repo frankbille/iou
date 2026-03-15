@@ -4,6 +4,7 @@ internal fun sampleDashboardState(): DashboardState =
     DashboardState(
         familyName = "Birch House",
         houseNote = "A warm ledger for chores, rewards, and the little financial rules that make family life calmer.",
+        currencySymbol = "$",
         children =
             listOf(
                 ChildSnapshot(
@@ -11,8 +12,8 @@ internal fun sampleDashboardState(): DashboardState =
                     balanceMinor = 6825,
                     savedMinor = 2400,
                     pendingTasks = 2,
-                    streakDays = 4,
-                    goalLabel = "Saving toward a sketch kit",
+                    subtitle = "Saving toward a sketch kit",
+                    badgeLabel = "4 day streak",
                     accent = Pine,
                 ),
                 ChildSnapshot(
@@ -20,8 +21,8 @@ internal fun sampleDashboardState(): DashboardState =
                     balanceMinor = 4150,
                     savedMinor = 900,
                     pendingTasks = 1,
-                    streakDays = 6,
-                    goalLabel = "Building up for soccer camp snacks",
+                    subtitle = "Building up for soccer camp snacks",
+                    badgeLabel = "6 day streak",
                     accent = Clay,
                 ),
                 ChildSnapshot(
@@ -29,8 +30,8 @@ internal fun sampleDashboardState(): DashboardState =
                     balanceMinor = 2740,
                     savedMinor = 1300,
                     pendingTasks = 2,
-                    streakDays = 3,
-                    goalLabel = "Halfway to roller skates",
+                    subtitle = "Halfway to roller skates",
+                    badgeLabel = "3 day streak",
                     accent = Gold,
                 ),
             ),

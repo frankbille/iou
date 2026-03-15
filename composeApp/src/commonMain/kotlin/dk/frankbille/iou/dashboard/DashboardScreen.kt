@@ -272,7 +272,7 @@ private fun HeroMetrics(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         MetricCard(
             title = "Tracked balance",
-            value = formatCurrency(state.totalTrackedMinor()),
+            value = state.formatMoney(state.totalTrackedMinor()),
             accent = Pine,
         )
         MetricCard(
@@ -282,7 +282,7 @@ private fun HeroMetrics(
         )
         MetricCard(
             title = "Rewards queued",
-            value = formatCurrency(state.totalScheduledRewardsMinor()),
+            value = state.formatMoney(state.totalScheduledRewardsMinor()),
             accent = Gold,
         )
     }
@@ -324,14 +324,17 @@ private fun ChildrenSection(state: DashboardState) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.children.forEach { child ->
-                ChildCard(child = child)
+                ChildCard(child = child, state = state)
             }
         }
     }
 }
 
 @Composable
-private fun ChildCard(child: ChildSnapshot) {
+private fun ChildCard(
+    child: ChildSnapshot,
+    state: DashboardState,
+) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = 0.92f),
@@ -349,20 +352,20 @@ private fun ChildCard(child: ChildSnapshot) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(text = child.name, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = child.goalLabel,
+                        text = child.subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Pill(
-                    text = "${child.streakDays} day streak",
+                    text = child.badgeLabel,
                     background = child.accent.copy(alpha = 0.12f),
                     textColor = child.accent,
                 )
             }
 
             Text(
-                text = formatCurrency(child.balanceMinor),
+                text = state.formatMoney(child.balanceMinor),
                 style = MaterialTheme.typography.headlineLarge,
                 color = child.accent,
             )
@@ -379,7 +382,7 @@ private fun ChildCard(child: ChildSnapshot) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = formatCurrency(child.savedMinor),
+                        text = state.formatMoney(child.savedMinor),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -407,14 +410,17 @@ private fun TasksSection(state: DashboardState) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.tasks.forEach { task ->
-                TaskCard(task = task)
+                TaskCard(task = task, state = state)
             }
         }
     }
 }
 
 @Composable
-private fun TaskCard(task: TaskSnapshot) {
+private fun TaskCard(
+    task: TaskSnapshot,
+    state: DashboardState,
+) {
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = Color.White.copy(alpha = 0.9f),
@@ -446,7 +452,7 @@ private fun TaskCard(task: TaskSnapshot) {
                     )
                 }
                 Pill(
-                    text = formatCurrency(task.rewardMinor),
+                    text = state.formatMoney(task.rewardMinor),
                     background = task.accent.copy(alpha = 0.12f),
                     textColor = task.accent,
                 )
@@ -484,7 +490,7 @@ private fun AccountsSection(state: DashboardState) {
                             )
                         }
                         Text(
-                            text = formatCurrency(account.amountMinor),
+                            text = state.formatMoney(account.amountMinor),
                             style = MaterialTheme.typography.titleMedium,
                             color = account.accent,
                         )

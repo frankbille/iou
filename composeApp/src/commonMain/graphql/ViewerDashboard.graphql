@@ -1,0 +1,179 @@
+query ViewerDashboard {
+  viewer {
+    person {
+      __typename
+      id
+      ... on Parent {
+        name
+      }
+      ... on Child {
+        name
+      }
+    }
+    families {
+      id
+      name
+      recurringTaskCompletionGracePeriodDays
+      currency {
+        code
+        symbol
+        position
+        minorUnit
+      }
+      defaultRewardAccount {
+        id
+        name
+        kind
+        balance {
+          amountMinor
+        }
+      }
+      parents {
+        id
+        relation
+        parent {
+          id
+          name
+        }
+      }
+      parentInvitations {
+        id
+        email
+        status
+      }
+      children {
+        id
+        relation
+        rewardPayoutPolicyOverride
+        child {
+          id
+          name
+          balance {
+            amountMinor
+          }
+          transactions {
+            __typename
+            id
+            timestamp
+            amount {
+              amountMinor
+            }
+            description
+            ... on RewardTransaction {
+              owner {
+                id
+                name
+              }
+              toAccount {
+                id
+                name
+                kind
+              }
+            }
+            ... on TransferTransaction {
+              owner {
+                id
+                name
+              }
+              fromAccount {
+                id
+                name
+                kind
+              }
+              toAccount {
+                id
+                name
+                kind
+              }
+            }
+            ... on AdjustmentTransaction {
+              owner {
+                id
+                name
+              }
+              account {
+                id
+                name
+                kind
+              }
+              reason
+            }
+            ... on WithdrawalTransaction {
+              owner {
+                id
+                name
+              }
+              fromAccount {
+                id
+                name
+                kind
+              }
+            }
+            ... on DepositTransaction {
+              owner {
+                id
+                name
+              }
+              toAccount {
+                id
+                name
+                kind
+              }
+            }
+          }
+        }
+      }
+      moneyAccounts {
+        id
+        name
+        kind
+        balance {
+          amountMinor
+        }
+      }
+      tasks {
+        __typename
+        id
+        title
+        reward {
+          amountMinor
+        }
+        rewardPayoutPolicy
+        eligibleChildren {
+          id
+          name
+        }
+        ... on OneOffTask {
+          child {
+            id
+            name
+          }
+          status
+          completedAt
+          approvedAt
+        }
+        ... on RecurringTask {
+          recurringTaskStatus
+          recurrence {
+            kind
+            interval
+            daysOfWeek
+            dayOfMonth
+            startsOn
+            endsOn
+            maxCompletionsPerPeriod
+          }
+          completions {
+            id
+            occurrenceDate
+            status
+            child {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+}
