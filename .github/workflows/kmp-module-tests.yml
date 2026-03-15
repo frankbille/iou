@@ -6,6 +6,14 @@ on:
       job-name:
         required: true
         type: string
+      runs-on:
+        required: false
+        type: string
+        default: macos-latest
+      boot-ios-simulator:
+        required: false
+        type: boolean
+        default: true
       gradle-task:
         required: true
         type: string
@@ -20,7 +28,7 @@ permissions:
 jobs:
   test:
     name: ${{ inputs.job-name }}
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
 
     steps:
@@ -37,6 +45,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Boot iOS simulator
+        if: ${{ inputs.boot-ios-simulator }}
         shell: bash
         run: |
           set -euo pipefail
