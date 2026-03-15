@@ -6,8 +6,8 @@ Start here when working on the multiplatform frontend.
 
 - `composeApp/` is the shared Kotlin Multiplatform client targeting Android, iOS, JS, and Wasm.
 - The UI is no longer the default template. It now contains a dashboard-style product direction with household finance/task sections, but it is still mostly sample-data driven.
-- GraphQL integration has started as a narrow Apollo Kotlin POC that loads only a family name from the backend.
-- Authentication is still manual for now. The POC accepts a pasted JWT and sends it as a `Bearer` token header.
+- GraphQL integration now loads the broader `ViewerDashboard` payload and maps it into the dashboard UI state.
+- Parent authentication now has a basic login/register flow with locally persisted JWT storage and a loading bootstrap before the dashboard appears.
 - Subscriptions are intentionally deferred. The current client only covers query + cache behavior.
 
 ## Read Next
@@ -16,8 +16,8 @@ Start here when working on the multiplatform frontend.
 - Product/domain source of truth: [`../SPEC.md`](../SPEC.md)
 - Shared app entrypoint: [`src/commonMain/kotlin/dk/frankbille/iou/App.kt`](src/commonMain/kotlin/dk/frankbille/iou/App.kt)
 - Dashboard UI: [`src/commonMain/kotlin/dk/frankbille/iou/dashboard/`](src/commonMain/kotlin/dk/frankbille/iou/dashboard/)
-- GraphQL POC UI: [`src/commonMain/kotlin/dk/frankbille/iou/graphql/FamilyNamePoc.kt`](src/commonMain/kotlin/dk/frankbille/iou/graphql/FamilyNamePoc.kt)
-- GraphQL repository and cache hydration: [`src/commonMain/kotlin/dk/frankbille/iou/graphql/FamilyNameRepository.kt`](src/commonMain/kotlin/dk/frankbille/iou/graphql/FamilyNameRepository.kt)
+- Session/auth state machine: [`src/commonMain/kotlin/dk/frankbille/iou/session/`](src/commonMain/kotlin/dk/frankbille/iou/session/)
+- GraphQL repository and cache hydration: [`src/commonMain/kotlin/dk/frankbille/iou/graphql/DashboardRepository.kt`](src/commonMain/kotlin/dk/frankbille/iou/graphql/DashboardRepository.kt)
 - Apollo query definitions: [`src/commonMain/graphql/`](src/commonMain/graphql/)
 
 ## Frontend Decisions So Far
@@ -25,7 +25,7 @@ Start here when working on the multiplatform frontend.
 - Apollo Kotlin is the chosen GraphQL client library.
 - The intended data model follows the `SPEC.md` rule to front-load family data and read from cache during screen transitions.
 - The current implementation uses Apollo normalized in-memory cache plus platform persistence for a serialized query snapshot that can rehydrate Apollo on cold start.
-- The first query is deliberately tiny: `ViewerFamilies.graphql` reads the viewer's accessible families and the UI uses the first family name as the POC value.
+- The current query focuses on `ViewerDashboard.graphql` and maps the first accessible family into dashboard-shaped UI models.
 - The dashboard UI state is deliberately separate from GraphQL response models so larger queries can later map into screen-shaped state.
 
 ## Caching and Persistence
@@ -34,13 +34,15 @@ Start here when working on the multiplatform frontend.
 - Android persists the snapshot in the app files directory. `MainActivity` initializes the application context needed by that storage layer before Compose starts.
 - iOS persists the snapshot in `NSUserDefaults`.
 - Persistence is keyed by GraphQL server URL and JWT hash so cached data is only rehydrated for the matching session context.
-- This is a POC cache strategy, not the final secure-storage story. The JWT itself is not persisted here.
+- This is a POC cache strategy, not the final secure-storage story. The JWT itself is now persisted locally through a separate platform-specific storage abstraction.
 
 ## Authentication Notes
 
 - The Apollo client adds `Authorization: Bearer <jwt>` on requests when a token is present.
-- There is no login flow, token refresh flow, or secure credential storage in `composeApp/` yet.
-- If auth behavior changes, update both the Apollo interceptor path and the persisted-cache keying assumptions.
+- Parent login and registration use the server's REST auth endpoints, then hydrate the GraphQL dashboard after the JWT is stored locally.
+- The GraphQL server address is defined in app config rather than entered in the UI.
+- There is still no token refresh flow or secure credential storage in `composeApp/` yet.
+- If auth behavior changes, update both the REST auth client and the Apollo interceptor path, plus the persisted-cache keying assumptions.
 
 ## Working Guidance
 

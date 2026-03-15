@@ -17,6 +17,7 @@ import com.apollographql.apollo.cache.normalized.fetchPolicy
 import com.apollographql.apollo.cache.normalized.normalizedCache
 import com.apollographql.apollo.network.http.HttpInterceptor
 import com.apollographql.apollo.network.http.HttpInterceptorChain
+import dk.frankbille.iou.config.AppServerConfig
 import dk.frankbille.iou.dashboard.AccountSnapshot
 import dk.frankbille.iou.dashboard.ActivitySnapshot
 import dk.frankbille.iou.dashboard.ChildSnapshot
@@ -38,20 +39,27 @@ internal enum class DashboardDataSource {
     NETWORK,
 }
 
+internal sealed interface DashboardBootstrapResult {
+    val viewerSummary: String
+    val source: DashboardDataSource
+}
+
 internal data class DashboardDataResult(
     val dashboardState: DashboardState,
-    val viewerSummary: String,
-    val source: DashboardDataSource,
-)
+    override val viewerSummary: String,
+    override val source: DashboardDataSource,
+) : DashboardBootstrapResult
+
+internal data class NoFamiliesDashboardResult(
+    val viewerName: String,
+    override val viewerSummary: String,
+    override val source: DashboardDataSource,
+) : DashboardBootstrapResult
 
 internal class GraphqlSessionStore(
-    initialServerUrl: String = "http://localhost:8080/graphql",
     initialJwt: String = "",
 ) {
-    var serverUrl by mutableStateOf(initialServerUrl)
     var jwt by mutableStateOf(initialJwt)
-
-    fun trimmedServerUrl(): String = serverUrl.trim()
 
     fun bearerTokenOrNull(): String? = jwt.trim().takeIf { it.isNotEmpty() }
 
@@ -64,7 +72,7 @@ internal class DashboardRepository(
     private val clientFactory = ApolloClientFactory(sessionStore = sessionStore)
     private val snapshotStorage = ViewerSnapshotStorage()
 
-    suspend fun loadDashboard(): DashboardDataResult {
+    suspend fun loadDashboard(): DashboardBootstrapResult {
         readCachedDashboardOrNull()?.let {
             return it
         }
@@ -72,11 +80,11 @@ internal class DashboardRepository(
         return refreshDashboard()
     }
 
-    suspend fun readCachedDashboard(): DashboardDataResult =
+    suspend fun readCachedDashboard(): DashboardBootstrapResult =
         readCachedDashboardOrNull()
             ?: throw IllegalStateException("No cached GraphQL dashboard snapshot is available yet.")
 
-    suspend fun refreshDashboard(): DashboardDataResult {
+    suspend fun refreshDashboard(): DashboardBootstrapResult {
         val client = clientFactory.client()
         hydratePersistentCache(client)
         val response =
@@ -89,7 +97,7 @@ internal class DashboardRepository(
         response.data?.let { data ->
             snapshotStorage.save(
                 PersistedViewerSnapshot(
-                    serverUrl = sessionStore.trimmedServerUrl(),
+                    serverUrl = AppServerConfig.graphqlUrl,
                     tokenHash = sessionStore.tokenHash(),
                     payload = serializeViewerDashboardData(data),
                 ),
@@ -99,7 +107,11 @@ internal class DashboardRepository(
         return result
     }
 
-    private suspend fun readCachedDashboardOrNull(): DashboardDataResult? {
+    fun clearSnapshot() {
+        snapshotStorage.clear()
+    }
+
+    private suspend fun readCachedDashboardOrNull(): DashboardBootstrapResult? {
         val client = clientFactory.client()
         hydratePersistentCache(client)
         val response =
@@ -120,7 +132,7 @@ internal class DashboardRepository(
             snapshotStorage
                 .load()
                 ?.takeIf {
-                    it.serverUrl == sessionStore.trimmedServerUrl() &&
+                    it.serverUrl == AppServerConfig.graphqlUrl &&
                         it.tokenHash == sessionStore.tokenHash()
                 } ?: return
 
@@ -143,9 +155,7 @@ private class ApolloClientFactory(
     private var currentClient: ApolloClient? = null
 
     fun client(): ApolloClient {
-        val serverUrl = sessionStore.trimmedServerUrl()
-        require(serverUrl.isNotEmpty()) { "GraphQL URL is required." }
-        val sessionSignature = "$serverUrl#${sessionStore.tokenHash()}"
+        val sessionSignature = "${AppServerConfig.graphqlUrl}#${sessionStore.tokenHash()}"
 
         val existing = currentClient
         if (existing != null && currentSessionSignature == sessionSignature) {
@@ -155,7 +165,7 @@ private class ApolloClientFactory(
         val apolloClient =
             ApolloClient
                 .Builder()
-                .serverUrl(serverUrl)
+                .serverUrl(AppServerConfig.graphqlUrl)
                 .addHttpInterceptor(BearerTokenInterceptor(sessionStore = sessionStore))
                 .normalizedCache(MemoryCacheFactory(maxSizeBytes = 5 * 1024 * 1024))
                 .build()
@@ -190,7 +200,7 @@ private class BearerTokenInterceptor(
 
 private fun com.apollographql.apollo.api.ApolloResponse<ViewerDashboardQuery.Data>.requireDashboard(
     source: DashboardDataSource,
-): DashboardDataResult {
+): DashboardBootstrapResult {
     exception?.let { throw IllegalStateException(it.message ?: "The GraphQL request failed.") }
     val graphqlError = errors?.firstOrNull()?.message
     if (graphqlError != null) {
@@ -200,13 +210,24 @@ private fun com.apollographql.apollo.api.ApolloResponse<ViewerDashboardQuery.Dat
     return data
         ?.viewer
         ?.toDashboardResult(source)
-        ?: throw IllegalStateException("The authenticated viewer does not have any accessible families.")
+        ?: throw IllegalStateException("The authenticated viewer is missing from the GraphQL response.")
 }
 
-private fun ViewerDashboardQuery.Viewer.toDashboardResult(source: DashboardDataSource): DashboardDataResult {
-    val family =
-        families.firstOrNull()
-            ?: throw IllegalStateException("The authenticated viewer does not have any accessible families.")
+private fun ViewerDashboardQuery.Viewer.toDashboardResult(source: DashboardDataSource): DashboardBootstrapResult {
+    val viewerName = person.viewerDisplayName()
+    val viewerSummary =
+        buildViewerSummary(
+            viewer = viewerName,
+            familyCount = families.size,
+        )
+    val family = families.firstOrNull()
+    if (family == null) {
+        return NoFamiliesDashboardResult(
+            viewerName = viewerName,
+            viewerSummary = viewerSummary,
+            source = source,
+        )
+    }
 
     val accentsByChildId = family.children.mapIndexed { index, familyChild -> familyChild.child.id to accentForIndex(index) }.toMap()
     val currencyPosition =
@@ -271,11 +292,6 @@ private fun ViewerDashboardQuery.Viewer.toDashboardResult(source: DashboardDataS
             .map { it.activity }
     val pendingInvitations = family.parentInvitations.count { it.status.name == "PENDING" }
     val approvalsWaiting = tasks.count { it.status == TaskStatus.REQUIRES_APPROVAL }
-    val viewerSummary =
-        buildViewerSummary(
-            viewer = person.viewerDisplayName(),
-            familyCount = families.size,
-        )
 
     return DashboardDataResult(
         dashboardState =
