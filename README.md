@@ -36,15 +36,20 @@ The overall direction is a single product that can span platforms while sharing 
 
 ## Backend Authentication
 
-The `server/` module now expects bearer JWT authentication on the GraphQL endpoint.
+The `server/` module expects bearer JWT authentication on the GraphQL endpoint.
 
 For local runs, provide a symmetric HMAC secret through `IOU_SECURITY_JWT_SECRET` (or the equivalent Spring property `iou.security.jwt-secret`).
 
-The current baseline expects the JWT `sub` claim to contain a Rails-style GlobalID:
+Parent authentication is currently handled through simple email/password endpoints:
+
+* `POST /auth/parents/register`
+* `POST /auth/parents/login`
+
+Passwords are stored as hashes, never in plaintext. Successful registration or login returns a bearer token whose JWT `sub` claim contains a Rails-style GlobalID:
 
 * `gid://iou/Parent/123`
 
-The backend parses the subject to derive both the person type and the internal id. This is intentionally a resource-server baseline only. Token issuance, invite acceptance, and child authentication are still future work.
+The backend parses the subject to derive both the person type and the internal id. Invitation acceptance and child authentication are still future work.
 
 ## 📘 More Detail
 

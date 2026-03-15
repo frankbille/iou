@@ -2,4 +2,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/001-initial-schema.sql
   - include:
+      file: db/changelog/changes/002-parent-auth-credentials.sql
+  - include:
       file: db/changelog/changes/999-test-data.sql
