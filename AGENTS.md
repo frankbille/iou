@@ -21,4 +21,8 @@ Start here when working in this repository.
 - For backend changes, treat the GraphQL SDL in `server/src/main/resources/graphql/` and the integration tests in `server/src/test/kotlin/` as part of the same change.
 - Prefer keeping GraphQL read DTOs in `shared/` so the frontend and backend share the same schema-facing model.
 - Balance derivation now lives in `shared/`; the main remaining architectural gap is recurrence and task-completion logic that still lives in `server/`.
+- PR descriptions should explain why the PR exists and why the implementation is structured the way it is, not just restate the diff.
+- Prefer PR descriptions with explicit sections, starting with `Background` and then `Solution`.
+- Avoid file-by-file change listings in PR descriptions; reviewers can get that from Git.
+- Omit validation sections from PR descriptions unless the user specifically asks for them.
 - Before completing any task, run `./gradlew spotlessCheck`. If it fails, run `./gradlew spotlessApply` and then rerun `./gradlew spotlessCheck`.
