@@ -4,13 +4,13 @@ import platform.Foundation.NSUserDefaults
 
 private const val SNAPSHOT_KEY = "viewer-families.snapshot"
 
-internal actual class ViewerFamiliesSnapshotStorage {
-    actual fun load(): PersistedViewerFamiliesSnapshot? =
+internal actual class ViewerSnapshotStorage {
+    actual fun load(): PersistedViewerSnapshot? =
         NSUserDefaults.standardUserDefaults
             .stringForKey(SNAPSHOT_KEY)
-            ?.let(::decodePersistedViewerFamiliesSnapshot)
+            ?.let(::decodePersistedViewerSnapshot)
 
-    actual fun save(snapshot: PersistedViewerFamiliesSnapshot) {
+    actual fun save(snapshot: PersistedViewerSnapshot) {
         NSUserDefaults.standardUserDefaults.setObject(snapshot.encode(), SNAPSHOT_KEY)
     }
 
