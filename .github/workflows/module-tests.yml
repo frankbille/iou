@@ -148,13 +148,46 @@ jobs:
           check_name: Server Test Report
           report_paths: server/build/test-results/**/*.xml
 
-  compose-app:
+  compose-app-android:
     needs: changes
     if: ${{ needs.changes.outputs.compose_app == 'true' }}
     uses: ./.github/workflows/kmp-module-tests.yml
     with:
-      job-name: Compose App
-      gradle-task: composeApp:allTests
+      job-name: Compose App Android
+      runs-on: ubuntu-latest
+      boot-ios-simulator: false
+      gradle-task: composeApp:testDebugUnitTest
+      report-paths: composeApp/build/test-results/**/*.xml
+
+  compose-app-ios:
+    needs: changes
+    if: ${{ needs.changes.outputs.compose_app == 'true' }}
+    uses: ./.github/workflows/kmp-module-tests.yml
+    with:
+      job-name: Compose App iOS
+      gradle-task: composeApp:iosSimulatorArm64Test
+      report-paths: composeApp/build/test-results/**/*.xml
+
+  compose-app-js:
+    needs: changes
+    if: ${{ needs.changes.outputs.compose_app == 'true' }}
+    uses: ./.github/workflows/kmp-module-tests.yml
+    with:
+      job-name: Compose App JS
+      runs-on: ubuntu-latest
+      boot-ios-simulator: false
+      gradle-task: composeApp:jsTest
+      report-paths: composeApp/build/test-results/**/*.xml
+
+  compose-app-wasm:
+    needs: changes
+    if: ${{ needs.changes.outputs.compose_app == 'true' }}
+    uses: ./.github/workflows/kmp-module-tests.yml
+    with:
+      job-name: Compose App WASM
+      runs-on: ubuntu-latest
+      boot-ios-simulator: false
+      gradle-task: composeApp:wasmJsTest
       report-paths: composeApp/build/test-results/**/*.xml
 
   shared:
