@@ -149,15 +149,14 @@ class TestDataIntegration {
                     addTaskCategory("Gardening"),
                 )
 
-            val invitations =
-                listOf(
-                    addParentInvitation(
-                        invitedByParent = parents.first(),
-                        email = "grandma@example.com",
-                        status = ACCEPTED,
-                        resolvedParent = parents.last(),
-                    ),
-                )
+            listOf(
+                addParentInvitation(
+                    invitedByParent = parents.first(),
+                    email = "grandma@example.com",
+                    status = ACCEPTED,
+                    resolvedParent = parents.last(),
+                ),
+            )
 
             val oneOffTasks =
                 listOf(
@@ -281,11 +280,12 @@ class TestDataIntegration {
     ) = parentRepository.save(parent(name)).also { parent ->
         familyParentRepository.save(familyParent(this, parent, relation))
 
-        val parentAuth = ParentAuthCredentialEntity().apply {
-            this.parent = parent
-            this.email = email
-            this.passwordHash = requireNotNull(passwordEncoder.encode(password))
-        }
+        val parentAuth =
+            ParentAuthCredentialEntity().apply {
+                this.parent = parent
+                this.email = email
+                this.passwordHash = requireNotNull(passwordEncoder.encode(password))
+            }
         parentAuthCredentialRepository.save(parentAuth)
     }
 
