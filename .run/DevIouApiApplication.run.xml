@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DevIouApiApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+    <module name="iou.server.dev" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="dk.frankbille.iou.dev.DevIouApiApplicationKt" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="dk.frankbille.iou.dev.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

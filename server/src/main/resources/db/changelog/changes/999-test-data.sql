@@ -11,9 +11,13 @@ insert into parents (name) values ('Jane Doe');
 
 insert into family_parents (family_id,parent_id,relation) values (1,1,'Mom');
 
+insert into parent_auth_credentials (email,parent_id,password_hash) values ('jane.doe@example.com',1,'$2a$10$O9RafHsnsdPkVDEIqwzOT.MIQpx6CxgaTSxtkZhj63w9kbi1SJKp6');
+
 insert into parents (name) values ('John Doe');
 
 insert into family_parents (family_id,parent_id,relation) values (1,2,'Dad');
+
+insert into parent_auth_credentials (email,parent_id,password_hash) values ('john.doe@example.com',2,'$2a$10$CDe9OiL0BKdioO92MFYWB.T5vFpfZgTtC.a43RIOVHn.aZY0ufbxq');
 
 insert into children (name) values ('Lucy');
 

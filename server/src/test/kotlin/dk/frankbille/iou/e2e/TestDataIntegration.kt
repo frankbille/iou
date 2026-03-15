@@ -1,5 +1,7 @@
 package dk.frankbille.iou.e2e
 
+import dk.frankbille.iou.auth.ParentAuthCredentialEntity
+import dk.frankbille.iou.auth.ParentAuthCredentialRepository
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.ChildRepository
 import dk.frankbille.iou.family.CurrencyKind.ISO_CURRENCY
@@ -55,6 +57,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import java.time.DayOfWeek
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.THURSDAY
@@ -75,6 +78,9 @@ class TestDataIntegration {
 
     @Autowired
     private lateinit var parentRepository: ParentRepository
+
+    @Autowired
+    private lateinit var parentAuthCredentialRepository: ParentAuthCredentialRepository
 
     @Autowired
     private lateinit var familyParentRepository: FamilyParentRepository
@@ -109,6 +115,8 @@ class TestDataIntegration {
     @Autowired
     private lateinit var rewardTransactionRepository: RewardTransactionRepository
 
+    private val passwordEncoder = BCryptPasswordEncoder()
+
     @Test
     fun `create complete family`() {
         val family = familyRepository.save(family())
@@ -116,8 +124,8 @@ class TestDataIntegration {
         with(family) {
             val parents =
                 listOf(
-                    addParent("Jane Doe", "Mom"),
-                    addParent("John Doe", "Dad"),
+                    addParent("Jane Doe", "Mom", "jane.doe@example.com", "jane123"),
+                    addParent("John Doe", "Dad", "john.doe@example.com", "john123"),
                 )
 
             val children =
@@ -268,8 +276,17 @@ class TestDataIntegration {
     private fun FamilyEntity.addParent(
         name: String,
         relation: String,
+        email: String,
+        password: String,
     ) = parentRepository.save(parent(name)).also { parent ->
         familyParentRepository.save(familyParent(this, parent, relation))
+
+        val parentAuth = ParentAuthCredentialEntity().apply {
+            this.parent = parent
+            this.email = email
+            this.passwordHash = requireNotNull(passwordEncoder.encode(password))
+        }
+        parentAuthCredentialRepository.save(parentAuth)
     }
 
     private fun FamilyEntity.addChild(

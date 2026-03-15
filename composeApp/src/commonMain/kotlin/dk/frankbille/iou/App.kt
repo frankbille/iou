@@ -3,53 +3,88 @@
 package dk.frankbille.iou
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import dk.frankbille.iou.dashboard.HouseholdDashboard
 import dk.frankbille.iou.dashboard.IouTheme
-import dk.frankbille.iou.dashboard.sampleDashboardState
-import dk.frankbille.iou.graphql.GraphqlDashboardCard
-import dk.frankbille.iou.graphql.GraphqlDashboardController
+import dk.frankbille.iou.session.AppController
+import dk.frankbille.iou.session.AppUiState
+import dk.frankbille.iou.session.AuthScreen
+import dk.frankbille.iou.session.LoadingScreen
+import dk.frankbille.iou.session.NoFamiliesScreen
+import dk.frankbille.iou.session.SessionErrorScreen
+import dk.frankbille.iou.session.SessionSummaryCard
 import kotlinx.coroutines.launch
 
 @Composable
 @Preview
 fun App() {
     val scope = rememberCoroutineScope()
-    val controller = remember { GraphqlDashboardController() }
-    val baseState = remember { sampleDashboardState() }
-    var dashboardOverride by remember { mutableStateOf<dk.frankbille.iou.dashboard.DashboardState?>(null) }
+    val controller = remember { AppController() }
+
+    LaunchedEffect(controller) {
+        controller.initialize()
+    }
 
     IouTheme {
-        HouseholdDashboard(
-            state = dashboardOverride ?: baseState,
-            topContent = {
-                GraphqlDashboardCard(
-                    controller = controller,
-                    onLoadCacheFirst = {
+        when (val state = controller.state) {
+            is AppUiState.Auth -> {
+                AuthScreen(
+                    form = state.form,
+                    onModeChange = controller::updateMode,
+                    onNameChange = controller::updateName,
+                    onEmailChange = controller::updateEmail,
+                    onPasswordChange = controller::updatePassword,
+                    onSubmit = {
                         scope.launch {
-                            controller.loadCacheFirst()
-                            dashboardOverride = controller.loadedDashboardState ?: dashboardOverride
-                        }
-                    },
-                    onReadCacheOnly = {
-                        scope.launch {
-                            controller.readCacheOnly()
-                            dashboardOverride = controller.loadedDashboardState ?: dashboardOverride
-                        }
-                    },
-                    onRefreshFromNetwork = {
-                        scope.launch {
-                            controller.refreshFromNetwork()
-                            dashboardOverride = controller.loadedDashboardState ?: dashboardOverride
+                            controller.submitAuth()
                         }
                     },
                 )
-            },
-        )
+            }
+
+            is AppUiState.Loading -> {
+                LoadingScreen(message = state.message)
+            }
+
+            is AppUiState.Dashboard -> {
+                HouseholdDashboard(
+                    state = state.state,
+                    topContent = {
+                        SessionSummaryCard(
+                            viewerSummary = state.viewerSummary,
+                            onLogout = controller::logout,
+                        )
+                    },
+                )
+            }
+
+            is AppUiState.NoFamilies -> {
+                NoFamiliesScreen(
+                    viewerName = state.viewerName,
+                    viewerSummary = state.viewerSummary,
+                    onRetry = {
+                        scope.launch {
+                            controller.retryBootstrap()
+                        }
+                    },
+                    onLogout = controller::logout,
+                )
+            }
+
+            is AppUiState.SessionError -> {
+                SessionErrorScreen(
+                    message = state.message,
+                    onRetry = {
+                        scope.launch {
+                            controller.retryBootstrap()
+                        }
+                    },
+                    onLogout = controller::logout,
+                )
+            }
+        }
     }
 }
