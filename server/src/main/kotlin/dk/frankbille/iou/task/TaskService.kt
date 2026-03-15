@@ -26,12 +26,15 @@ import dk.frankbille.iou.taskcategory.TaskCategoryRepository
 import dk.frankbille.iou.taskcategory.toDto
 import dk.frankbille.iou.transaction.RewardTransactionRepository
 import dk.frankbille.iou.transaction.TransactionService
+import kotlinx.datetime.toKotlinLocalDate
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlin.time.toKotlinInstant
+import kotlinx.datetime.DayOfWeek as SharedDayOfWeek
 
 @Service
 @Transactional(readOnly = true)
@@ -721,14 +724,14 @@ fun OneOffTaskEntity.toDto(): OneOffTask =
         description = description,
         reward = Money(rewardAmountMinor),
         rewardPayoutPolicy = rewardPayoutPolicy,
-        createdAt = createdAt,
+        createdAt = createdAt.toKotlinInstant(),
         createdBy = createdByParent.toDto(),
-        updatedAt = updatedAt,
+        updatedAt = updatedAt.toKotlinInstant(),
         updatedBy = updatedByParent.toDto(),
         status = status,
-        completedAt = completedAt,
+        completedAt = completedAt?.toKotlinInstant(),
         child = completedChild?.toDto(),
-        approvedAt = approvedAt,
+        approvedAt = approvedAt?.toKotlinInstant(),
         approvedBy = approvedByParent?.toDto(),
         familyId = familyId,
         category = category.toDto(),
@@ -742,9 +745,9 @@ fun RecurringTaskEntity.toDto(): RecurringTask =
         description = description,
         reward = Money(rewardAmountMinor),
         rewardPayoutPolicy = rewardPayoutPolicy,
-        createdAt = createdAt,
+        createdAt = createdAt.toKotlinInstant(),
         createdBy = createdByParent.toDto(),
-        updatedAt = updatedAt,
+        updatedAt = updatedAt.toKotlinInstant(),
         updatedBy = updatedByParent.toDto(),
         eligibleChildren = eligibleChildren.toDto(eligibilityMode),
         recurringTaskStatus = status,
@@ -752,10 +755,14 @@ fun RecurringTaskEntity.toDto(): RecurringTask =
             TaskRecurrence(
                 kind = recurrenceKind,
                 interval = recurrenceInterval,
-                daysOfWeek = recurrenceDays?.takeIf { it.isNotEmpty() }?.sortedBy { it.value },
+                daysOfWeek =
+                    recurrenceDays
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.map { SharedDayOfWeek.valueOf(it.name) }
+                        ?.sortedBy(SharedDayOfWeek::ordinal),
                 dayOfMonth = recurrenceDayOfMonth,
-                startsOn = recurrenceStartsOn,
-                endsOn = recurrenceEndsOn,
+                startsOn = recurrenceStartsOn?.toKotlinLocalDate(),
+                endsOn = recurrenceEndsOn?.toKotlinLocalDate(),
                 maxCompletionsPerPeriod = recurrenceMaxCompletionsPerPeriod,
             ),
         familyId = familyId,
@@ -767,10 +774,10 @@ fun RecurringTaskCompletionEntity.toDto(): RecurringTaskCompletion =
         id = requireNotNull(id),
         recurringTaskId = recurringTaskId,
         child = child.toDto(),
-        occurrenceDate = occurrenceDate,
+        occurrenceDate = occurrenceDate.toKotlinLocalDate(),
         status = status,
-        completedAt = completedAt,
-        approvedAt = approvedAt,
+        completedAt = completedAt?.toKotlinInstant(),
+        approvedAt = approvedAt?.toKotlinInstant(),
         approvedBy = approvedByParent?.toDto(),
     )
 

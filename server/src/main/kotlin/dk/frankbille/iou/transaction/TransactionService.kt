@@ -1,5 +1,6 @@
 package dk.frankbille.iou.transaction
 
+import dk.frankbille.iou.balance.BalanceCalculator
 import dk.frankbille.iou.child.ChildEntity
 import dk.frankbille.iou.child.toDto
 import dk.frankbille.iou.events.FamilyEventRecorder
@@ -15,13 +16,13 @@ import dk.frankbille.iou.parent.ParentRepository
 import dk.frankbille.iou.parent.toDto
 import dk.frankbille.iou.security.CurrentViewer
 import dk.frankbille.iou.security.HasAccessToFamilyAndIsParent
-import dk.frankbille.iou.security.IsParent
 import dk.frankbille.iou.task.OneOffTaskEntity
 import dk.frankbille.iou.task.RecurringTaskCompletionEntity
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import kotlin.time.toKotlinInstant
 
 @Service
 @Transactional(readOnly = true)
@@ -44,37 +45,7 @@ class TransactionService(
     fun getRewardByRecurringTaskCompletionId(completionId: Long): RewardTransaction? =
         rewardTransactionRepository.findByRecurringTaskCompletionId(completionId)?.toDto()
 
-    fun calculateChildBalance(childId: Long): Int =
-        getByChildId(childId).sumOf {
-            when (it) {
-                is RewardTransaction -> {
-                    it.amount.amountMinor
-                }
-
-                is DepositTransaction -> {
-                    it.amount.amountMinor
-                }
-
-                is AdjustmentTransaction -> {
-                    when (it.reason) {
-                        AdjustmentReason.MANUAL_REMOVE -> -it.amount.amountMinor
-                        else -> it.amount.amountMinor
-                    }
-                }
-
-                is WithdrawalTransaction -> {
-                    -it.amount.amountMinor
-                }
-
-                is TransferTransaction -> {
-                    0
-                }
-
-                else -> {
-                    0
-                }
-            }
-        }
+    fun calculateChildBalance(childId: Long): Money = BalanceCalculator.calculateChildBalance(getByChildId(childId))
 
     @Transactional
     @HasAccessToFamilyAndIsParent
@@ -231,7 +202,7 @@ fun TransactionEntity.toDto(): Transaction =
 fun RewardTransactionEntity.toDto(): RewardTransaction =
     RewardTransaction(
         id = requireNotNull(id),
-        timestamp = timestamp,
+        timestamp = timestamp.toKotlinInstant(),
         amount = Money(amountMinor),
         description = description,
         familyId = familyId,
@@ -245,7 +216,7 @@ fun RewardTransactionEntity.toDto(): RewardTransaction =
 fun TransferTransactionEntity.toDto(): TransferTransaction =
     TransferTransaction(
         id = requireNotNull(id),
-        timestamp = timestamp,
+        timestamp = timestamp.toKotlinInstant(),
         amount = Money(amountMinor),
         description = description,
         familyId = familyId,
@@ -258,7 +229,7 @@ fun TransferTransactionEntity.toDto(): TransferTransaction =
 fun AdjustmentTransactionEntity.toDto(): AdjustmentTransaction =
     AdjustmentTransaction(
         id = requireNotNull(id),
-        timestamp = timestamp,
+        timestamp = timestamp.toKotlinInstant(),
         amount = Money(amountMinor),
         description = description,
         reason = adjustmentReason,
@@ -271,7 +242,7 @@ fun AdjustmentTransactionEntity.toDto(): AdjustmentTransaction =
 fun WithdrawalTransactionEntity.toDto(): WithdrawalTransaction =
     WithdrawalTransaction(
         id = requireNotNull(id),
-        timestamp = timestamp,
+        timestamp = timestamp.toKotlinInstant(),
         amount = Money(amountMinor),
         description = description,
         familyId = familyId,
@@ -283,7 +254,7 @@ fun WithdrawalTransactionEntity.toDto(): WithdrawalTransaction =
 fun DepositTransactionEntity.toDto(): DepositTransaction =
     DepositTransaction(
         id = requireNotNull(id),
-        timestamp = timestamp,
+        timestamp = timestamp.toKotlinInstant(),
         amount = Money(amountMinor),
         description = description,
         familyId = familyId,

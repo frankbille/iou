@@ -42,9 +42,17 @@ class TransactionController(
     @SchemaMapping(typeName = "RewardTransaction", field = "taskCompletion")
     fun taskCompletion(transaction: RewardTransaction): TaskCompletion =
         when {
-            transaction.oneOffTaskId != null -> taskService.getOneOffTask(transaction.oneOffTaskId)
-            transaction.recurringTaskCompletionId != null -> taskService.getRecurringTaskCompletion(transaction.recurringTaskCompletionId)
-            else -> throw IllegalStateException("Reward transaction ${transaction.id} is missing its task completion reference")
+            transaction.oneOffTaskId != null -> {
+                taskService.getOneOffTask(requireNotNull(transaction.oneOffTaskId))
+            }
+
+            transaction.recurringTaskCompletionId != null -> {
+                taskService.getRecurringTaskCompletion(requireNotNull(transaction.recurringTaskCompletionId))
+            }
+
+            else -> {
+                throw IllegalStateException("Reward transaction ${transaction.id} is missing its task completion reference")
+            }
         }
 
     @SchemaMapping(typeName = "TransferTransaction", field = "family")

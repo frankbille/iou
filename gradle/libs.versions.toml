@@ -14,6 +14,7 @@ graphqlJavaExtendedScalars = "24.0"
 kotlin = "2.3.10"
 kotlinJpa = "2.3.10"
 kotlinSpring = "2.3.10"
+kotlinxDatetime = "0.7.1"
 material3 = "1.10.0-alpha05"
 p6spySpringBootStarter = "2.0.0"
 springBoot = "4.0.3"
@@ -24,6 +25,7 @@ spotless = "8.3.0"
 # Frontend
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-testExt-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-testExt" }
 androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-espresso" }

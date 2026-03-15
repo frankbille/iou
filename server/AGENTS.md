@@ -16,7 +16,8 @@
 - Family and membership behavior: `src/main/kotlin/dk/frankbille/iou/family/`
 - Invitation lifecycle: `src/main/kotlin/dk/frankbille/iou/invitation/`
 - Task creation, completion, approval, and recurrence handling: `src/main/kotlin/dk/frankbille/iou/task/TaskService.kt`
-- Ledger writes and balance derivation: `src/main/kotlin/dk/frankbille/iou/transaction/TransactionService.kt`
+- Ledger writes and server-side transaction orchestration: `src/main/kotlin/dk/frankbille/iou/transaction/TransactionService.kt`
+- Shared read DTOs and balance derivation: `../shared/src/commonMain/kotlin/dk/frankbille/iou/`
 - Security, viewer resolution, and family scoping: `src/main/kotlin/dk/frankbille/iou/security/`
 - Event publication and subscriptions: `src/main/kotlin/dk/frankbille/iou/events/`
 
@@ -28,6 +29,6 @@
 
 ## Known Gaps
 
-- `SPEC.md` expects shared client/server business logic in `shared/`, but balance calculation, recurrence logic, and task completion rules still live in server services.
+- `SPEC.md` expects more client/server business logic in `shared/`. Balance calculation and read DTOs are shared now, but recurrence logic and task completion rules still live in server services.
 - Invitation acceptance and identity-linking flows are still intentionally deferred; the implemented invitation lifecycle currently covers creation, viewing, revocation, and expiry.
-- When you change backend behavior, update the SDL, service/controller code, and integration tests together.
+- When you change backend behavior, update the SDL, service/controller code, integration tests, and shared DTOs or shared logic together when they are schema-relevant.
