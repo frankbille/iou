@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
+    alias(libs.plugins.apollo)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -43,6 +44,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
+            implementation(libs.apollo.runtime)
+            implementation(libs.apollo.normalized.cache)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
@@ -60,14 +63,14 @@ kotlin {
 }
 
 android {
-    namespace = "dk.frankbille.demo"
+    namespace = "dk.frankbille.iou"
     compileSdk =
         libs.versions.android.compileSdk
             .get()
             .toInt()
 
     defaultConfig {
-        applicationId = "dk.frankbille.demo"
+        applicationId = "dk.frankbille.iou"
         minSdk =
             libs.versions.android.minSdk
                 .get()
@@ -97,4 +100,17 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+apollo {
+    service("iou") {
+        packageName.set("dk.frankbille.iou.graphql.generated")
+        schemaFiles.from(
+            file("../server/src/main/resources/graphql/query.graphqls"),
+            fileTree("../server/src/main/resources/graphql") {
+                include("*.graphqls")
+                exclude("query.graphqls")
+            },
+        )
+    }
 }

@@ -14,11 +14,19 @@ import dk.frankbille.iou.family.FamilyService
 import dk.frankbille.iou.parent.ParentEntity
 import dk.frankbille.iou.parent.ParentRepository
 import dk.frankbille.iou.test.GraphQlControllerIntegrationTest
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.graphql.test.tester.entity
+import org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS
+import org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS
+import org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN
+import org.springframework.http.HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS
+import org.springframework.http.HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD
+import org.springframework.http.HttpHeaders.ORIGIN
+import org.springframework.http.HttpMethod.POST
 import org.springframework.security.access.AccessDeniedException
 
 class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
@@ -47,6 +55,27 @@ class SecurityIntegrationTest : GraphQlControllerIntegrationTest() {
             .execute()
             .errors()
             .expect { it.message == "Unauthorized" }
+    }
+
+    @Test
+    fun `graphql endpoint allows browser preflight from localhost origins`() {
+        rootWebTestClient()
+            .options()
+            .uri("/graphql")
+            .header(ORIGIN, "http://localhost:8080")
+            .header(ACCESS_CONTROL_REQUEST_METHOD, POST.name())
+            .header(ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type")
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectBody()
+            .consumeWith { response ->
+                val headers = response.responseHeaders
+
+                assertThat(headers.getFirst(ACCESS_CONTROL_ALLOW_ORIGIN)).isEqualTo("http://localhost:8080")
+                assertThat(headers.getFirst(ACCESS_CONTROL_ALLOW_METHODS)).contains(POST.name())
+                assertThat(headers.getFirst(ACCESS_CONTROL_ALLOW_HEADERS)?.lowercase()).contains("authorization")
+            }
     }
 
     @Test

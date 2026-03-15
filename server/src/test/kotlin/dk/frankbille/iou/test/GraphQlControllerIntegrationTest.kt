@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.graphql.test.tester.HttpGraphQlTester
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.servlet.client.MockMvcWebTestClient
 import org.springframework.web.context.WebApplicationContext
 
@@ -89,11 +90,7 @@ abstract class GraphQlControllerIntegrationTest {
 
     protected fun graphQlTester() =
         HttpGraphQlTester.create(
-            MockMvcWebTestClient
-                .bindToApplicationContext(applicationContext)
-                .configureClient()
-                .baseUrl("/graphql")
-                .build(),
+            webTestClient(),
         )
 
     protected fun authenticatedGraphQlTester(parentId: Long) =
@@ -105,14 +102,28 @@ abstract class GraphQlControllerIntegrationTest {
     private fun authenticatedGraphQlTesterWithBearerToken(bearerToken: String) =
         HttpGraphQlTester
             .create(
-                MockMvcWebTestClient
-                    .bindToApplicationContext(applicationContext)
-                    .apply(springSecurity())
-                    .configureClient()
-                    .baseUrl("/graphql")
-                    .build(),
+                authenticatedWebTestClient(),
             ).mutate()
             .headers { headers ->
                 headers.setBearerAuth(bearerToken)
             }.build()
+
+    protected fun webTestClient(): WebTestClient = webTestClient(baseUrl = "/graphql")
+
+    protected fun rootWebTestClient(): WebTestClient = webTestClient(baseUrl = "")
+
+    private fun webTestClient(baseUrl: String): WebTestClient =
+        MockMvcWebTestClient
+            .bindToApplicationContext(applicationContext)
+            .configureClient()
+            .baseUrl(baseUrl)
+            .build()
+
+    protected fun authenticatedWebTestClient(): WebTestClient =
+        MockMvcWebTestClient
+            .bindToApplicationContext(applicationContext)
+            .apply(springSecurity())
+            .configureClient()
+            .baseUrl("/graphql")
+            .build()
 }
