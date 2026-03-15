@@ -13,6 +13,7 @@ Start here when working in this repository.
 
 - Domain rules and intended behavior: [`SPEC.md`](SPEC.md)
 - Public-facing project overview: [`README.md`](README.md)
+- Frontend implementation state and client-specific guidance: [`composeApp/AGENTS.md`](composeApp/AGENTS.md)
 - Backend implementation state and server-specific guidance: [`server/AGENTS.md`](server/AGENTS.md)
 
 ## Working Guidance

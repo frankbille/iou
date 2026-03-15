@@ -1,53 +1,55 @@
+@file:Suppress("FunctionName")
+
 package dk.frankbille.iou
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import iou.composeapp.generated.resources.Res
-import iou.composeapp.generated.resources.compose_multiplatform
-import org.jetbrains.compose.resources.painterResource
+import dk.frankbille.iou.dashboard.HouseholdDashboard
+import dk.frankbille.iou.dashboard.IouTheme
+import dk.frankbille.iou.dashboard.sampleDashboardState
+import dk.frankbille.iou.graphql.FamilyNamePocCard
+import dk.frankbille.iou.graphql.FamilyNamePocController
+import kotlinx.coroutines.launch
 
 @Composable
 @Preview
-@Suppress("FunctionName")
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier =
-                Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .safeContentPadding()
-                    .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Family money, chores, and rewards.")
-                }
-            }
-        }
+    val scope = rememberCoroutineScope()
+    val controller = remember { FamilyNamePocController() }
+    val baseState = remember { sampleDashboardState() }
+    var familyNameOverride by remember { mutableStateOf<String?>(null) }
+
+    IouTheme {
+        HouseholdDashboard(
+            state = baseState.copy(familyName = familyNameOverride ?: baseState.familyName),
+            topContent = {
+                FamilyNamePocCard(
+                    controller = controller,
+                    onLoadCacheFirst = {
+                        scope.launch {
+                            controller.loadCacheFirst()
+                            familyNameOverride = controller.state.familyName ?: familyNameOverride
+                        }
+                    },
+                    onReadCacheOnly = {
+                        scope.launch {
+                            controller.readCacheOnly()
+                            familyNameOverride = controller.state.familyName ?: familyNameOverride
+                        }
+                    },
+                    onRefreshFromNetwork = {
+                        scope.launch {
+                            controller.refreshFromNetwork()
+                            familyNameOverride = controller.state.familyName ?: familyNameOverride
+                        }
+                    },
+                )
+            },
+        )
     }
 }
