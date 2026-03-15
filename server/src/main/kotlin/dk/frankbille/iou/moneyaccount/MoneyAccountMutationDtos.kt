@@ -5,15 +5,6 @@ import dk.frankbille.iou.family.CurrencyPosition
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 
-data class Currency(
-    val code: String,
-    val name: String,
-    val symbol: String,
-    val position: CurrencyPosition,
-    val minorUnit: Int,
-    val kind: CurrencyKind,
-)
-
 data class CurrencyInput(
     @field:NotBlank(message = "Currency code must not be blank")
     val code: String,
@@ -25,17 +16,6 @@ data class CurrencyInput(
     @field:Min(value = 0, message = "Currency minor unit must be zero or greater")
     val minorUnit: Int,
     val kind: CurrencyKind,
-)
-
-data class Money(
-    val amountMinor: Int,
-)
-
-data class MoneyAccount(
-    val id: Long,
-    val familyId: Long,
-    val name: String,
-    val kind: MoneyAccountKind,
 )
 
 @UniqueMoneyAccountName

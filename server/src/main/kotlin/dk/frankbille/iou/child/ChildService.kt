@@ -20,7 +20,7 @@ class ChildService(
             .map { it.toDto() }
             .orElseThrow { AccessDeniedException("Authenticated child ${currentViewer.childId()} was not found") }
 
-    fun getBalance(childId: Long): Money = Money(transactionService.calculateChildBalance(childId))
+    fun getBalance(childId: Long): Money = transactionService.calculateChildBalance(childId)
 
     fun getTransactions(childId: Long) = transactionService.getByChildId(childId)
 }

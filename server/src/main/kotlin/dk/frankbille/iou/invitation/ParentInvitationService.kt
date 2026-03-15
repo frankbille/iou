@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneOffset.UTC
 import java.util.UUID
+import kotlin.time.toKotlinInstant
 
 @Service
 @Transactional(readOnly = true)
@@ -99,9 +99,9 @@ fun ParentInvitationEntity.toDto(): ParentInvitation =
         id = requireNotNull(id),
         email = email,
         status = status,
-        createdAt = createdAt.atOffset(UTC),
-        acceptedAt = acceptedAt?.atOffset(UTC),
-        expiresAt = expiresAt?.atOffset(UTC),
+        createdAt = createdAt.toKotlinInstant(),
+        acceptedAt = acceptedAt?.toKotlinInstant(),
+        expiresAt = expiresAt?.toKotlinInstant(),
         familyId = familyId,
         invitedBy = invitedByParent.toDto(),
         resolvedParentId = resolvedParent?.id,

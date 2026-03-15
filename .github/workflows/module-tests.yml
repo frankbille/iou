@@ -163,5 +163,7 @@ jobs:
     uses: ./.github/workflows/kmp-module-tests.yml
     with:
       job-name: Shared
-      gradle-task: shared:allTests
+      runs-on: ubuntu-latest
+      boot-ios-simulator: false
+      gradle-task: shared:jvmTest shared:jsTest
       report-paths: shared/build/test-results/**/*.xml

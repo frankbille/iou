@@ -1,5 +1,6 @@
 package dk.frankbille.iou.moneyaccount
 
+import dk.frankbille.iou.balance.BalanceCalculator
 import dk.frankbille.iou.events.FamilyEventRecorder
 import dk.frankbille.iou.events.MoneyAccountChangedEvent
 import dk.frankbille.iou.events.MoneyAccountDeletedEvent
@@ -8,13 +9,8 @@ import dk.frankbille.iou.security.FamilyScopeCheck
 import dk.frankbille.iou.security.HasAccessToFamily
 import dk.frankbille.iou.security.HasAccessToFamilyAndIsParent
 import dk.frankbille.iou.security.IsParent
-import dk.frankbille.iou.transaction.AdjustmentReason
-import dk.frankbille.iou.transaction.AdjustmentTransactionEntity
-import dk.frankbille.iou.transaction.DepositTransactionEntity
-import dk.frankbille.iou.transaction.RewardTransactionEntity
 import dk.frankbille.iou.transaction.TransactionRepository
-import dk.frankbille.iou.transaction.TransferTransactionEntity
-import dk.frankbille.iou.transaction.WithdrawalTransactionEntity
+import dk.frankbille.iou.transaction.toDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -95,45 +91,12 @@ class MoneyAccountService(
     fun getBalance(
         accountId: Long,
         familyId: Long,
-    ) = Money(
-        transactionRepository.findAllByFamilyIdOrderByTimestampDesc(familyId).sumOf { transaction ->
-            when (transaction) {
-                is RewardTransactionEntity -> {
-                    if (transaction.accountOne.id == accountId) transaction.amountMinor else 0
-                }
-
-                is DepositTransactionEntity -> {
-                    if (transaction.accountOne.id == accountId) transaction.amountMinor else 0
-                }
-
-                is AdjustmentTransactionEntity -> {
-                    if (transaction.accountOne.id == accountId) {
-                        when (transaction.adjustmentReason) {
-                            AdjustmentReason.MANUAL_REMOVE -> -transaction.amountMinor
-                            else -> transaction.amountMinor
-                        }
-                    } else {
-                        0
-                    }
-                }
-
-                is TransferTransactionEntity -> {
-                    when (accountId) {
-                        transaction.accountOne.id -> -transaction.amountMinor
-                        transaction.accountTwo.id -> transaction.amountMinor
-                        else -> 0
-                    }
-                }
-
-                is WithdrawalTransactionEntity -> {
-                    if (transaction.accountOne.id == accountId) -transaction.amountMinor else 0
-                }
-
-                else -> {
-                    0
-                }
-            }
-        },
+    ) = BalanceCalculator.calculateMoneyAccountBalance(
+        accountId = accountId,
+        transactions =
+            transactionRepository
+                .findAllByFamilyIdOrderByTimestampDesc(familyId)
+                .map { it.toDto() },
     )
 }
 

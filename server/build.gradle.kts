@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.kotlin.reflect)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.graphql.java.extended.scalars)
 
