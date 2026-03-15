@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.kotlinJpa)
@@ -17,6 +19,25 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+val mainSourceSet = sourceSets.named("main").get()
+val devSourceSet =
+    sourceSets.create("dev") {
+        kotlin.setSrcDirs(listOf("src/dev/kotlin"))
+        resources.setSrcDirs(listOf("src/dev/resources"))
+        compileClasspath += mainSourceSet.output
+        runtimeClasspath += output + mainSourceSet.output
+    }
+
+configurations.named(devSourceSet.implementationConfigurationName) {
+    extendsFrom(configurations.named("testImplementation").get())
+}
+configurations.named(devSourceSet.compileOnlyConfigurationName) {
+    extendsFrom(configurations.named("testCompileOnly").get())
+}
+configurations.named(devSourceSet.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.named("testRuntimeOnly").get())
 }
 
 dependencies {
@@ -69,4 +90,12 @@ allOpen {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.register<BootRun>("dev") {
+    group = "application"
+    description = "Runs the local development server."
+    dependsOn(tasks.named(devSourceSet.classesTaskName))
+    classpath = devSourceSet.runtimeClasspath
+    mainClass.set("dk.frankbille.iou.dev.DevIouApiApplicationKt")
 }
