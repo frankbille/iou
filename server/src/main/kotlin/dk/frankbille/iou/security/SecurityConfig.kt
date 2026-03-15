@@ -3,6 +3,7 @@ package dk.frankbille.iou.security
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod.OPTIONS
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy.STATELESS
@@ -26,12 +27,15 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
         http
             .csrf { it.disable() }
+            .cors {}
             .sessionManagement { it.sessionCreationPolicy(STATELESS) }
             .authorizeHttpRequests {
                 it
                     .requestMatchers("/error")
                     .permitAll()
                     .requestMatchers("/auth/parents/**")
+                    .permitAll()
+                    .requestMatchers(OPTIONS, "/graphql")
                     .permitAll()
                     .requestMatchers("/graphql")
                     .authenticated()
