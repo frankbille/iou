@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       server: ${{ steps.filter.outputs.server }}
+      android_app: ${{ steps.filter.outputs.android_app }}
       compose_app: ${{ steps.filter.outputs.compose_app }}
       shared: ${{ steps.filter.outputs.shared }}
 
@@ -33,6 +34,7 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "server=true" >> "$GITHUB_OUTPUT"
+            echo "android_app=true" >> "$GITHUB_OUTPUT"
             echo "compose_app=true" >> "$GITHUB_OUTPUT"
             echo "shared=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -88,6 +90,7 @@ jobs:
           printf '%s\n' "$changed_files"
 
           server=false
+          android_app=false
           compose_app=false
           shared=false
 
@@ -98,6 +101,12 @@ jobs:
             case "$file" in
               server/*|shared/*|build.gradle.kts|settings.gradle.kts|gradle.properties|gradle/wrapper/*|gradle/libs.versions.toml)
                 server=true
+                ;;
+            esac
+
+            case "$file" in
+              androidApp/*|composeApp/*|shared/*|build.gradle.kts|settings.gradle.kts|gradle.properties|gradle/wrapper/*|gradle/libs.versions.toml)
+                android_app=true
                 ;;
             esac
 
@@ -115,6 +124,7 @@ jobs:
           done <<< "$changed_files"
 
           echo "server=$server" >> "$GITHUB_OUTPUT"
+          echo "android_app=$android_app" >> "$GITHUB_OUTPUT"
           echo "compose_app=$compose_app" >> "$GITHUB_OUTPUT"
           echo "shared=$shared" >> "$GITHUB_OUTPUT"
 
@@ -150,14 +160,14 @@ jobs:
 
   compose-app-android:
     needs: changes
-    if: ${{ needs.changes.outputs.compose_app == 'true' }}
+    if: ${{ needs.changes.outputs.android_app == 'true' }}
     uses: ./.github/workflows/kmp-module-tests.yml
     with:
       job-name: Compose App Android
       runs-on: ubuntu-latest
       boot-ios-simulator: false
-      gradle-task: composeApp:testDebugUnitTest
-      report-paths: composeApp/build/test-results/**/*.xml
+      gradle-task: androidApp:testDebugUnitTest
+      report-paths: androidApp/build/test-results/**/*.xml
 
   compose-app-ios:
     needs: changes

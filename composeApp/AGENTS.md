@@ -4,7 +4,8 @@ Start here when working on the multiplatform frontend.
 
 ## Current State
 
-- `composeApp/` is the shared Kotlin Multiplatform client targeting Android, iOS, JS, and Wasm.
+- `composeApp/` is the shared Kotlin Multiplatform client library used by the Android host app plus the iOS, JS, and Wasm targets.
+- `androidApp/` now owns the Android application plugin, launcher resources, and `MainActivity`; `composeApp/` remains the shared UI and platform integration layer.
 - The UI is no longer the default template. It now contains a dashboard-style product direction with household finance/task sections, but it is still mostly sample-data driven.
 - GraphQL integration now loads the broader `ViewerDashboard` payload and maps it into the dashboard UI state.
 - Parent authentication now has a basic login/register flow with locally persisted JWT storage and a loading bootstrap before the dashboard appears.
@@ -31,7 +32,7 @@ Start here when working on the multiplatform frontend.
 ## Caching and Persistence
 
 - Web persists the serialized family snapshot in browser local storage.
-- Android persists the snapshot in the app files directory. `MainActivity` initializes the application context needed by that storage layer before Compose starts.
+- Android persists the snapshot in the app files directory. The Android host app's `MainActivity` initializes the application context needed by that storage layer before Compose starts.
 - iOS persists the snapshot in `NSUserDefaults`.
 - Persistence is keyed by GraphQL server URL and JWT hash so cached data is only rehydrated for the matching session context.
 - This is a POC cache strategy, not the final secure-storage story. The JWT itself is now persisted locally through a separate platform-specific storage abstraction.
@@ -56,5 +57,6 @@ Start here when working on the multiplatform frontend.
 ## Validation
 
 - For frontend-only changes, `./gradlew :composeApp:jsTest` is the fastest baseline check.
-- When touching mobile `expect`/`actual` code, also run `./gradlew :composeApp:compileDebugKotlinAndroid` and `./gradlew :composeApp:compileKotlinIosSimulatorArm64`.
+- When touching Android host or Android-specific frontend behavior, also run `./gradlew :androidApp:testDebugUnitTest`.
+- When touching iOS `expect`/`actual` code, also run `./gradlew :composeApp:compileKotlinIosSimulatorArm64`.
 - Before finishing, run `./gradlew spotlessCheck`. If it fails, run `./gradlew spotlessApply` and then rerun `./gradlew spotlessCheck`.

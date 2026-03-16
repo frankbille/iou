@@ -6,13 +6,14 @@ Start here when working in this repository.
 
 - `SPEC.md` is the behavioral source of truth for the domain model, GraphQL surface, and intended architecture.
 - `server/` is the most complete module today. It contains the working backend, persistence model, authentication, subscriptions, and most of the test coverage.
-- `composeApp/` and `iosApp/` are still early scaffolding rather than a feature-complete product client.
+- `composeApp/`, `androidApp/`, and `iosApp/` are still early scaffolding rather than a feature-complete product client.
 - `shared/` is now the canonical shared Kotlin domain layer for read DTOs and balance derivation used by both the frontend and the backend.
 
 ## Read Next
 
 - Domain rules and intended behavior: [`SPEC.md`](SPEC.md)
 - Public-facing project overview: [`README.md`](README.md)
+- Android host app guidance: [`androidApp/AGENTS.md`](androidApp/AGENTS.md)
 - Frontend implementation state and client-specific guidance: [`composeApp/AGENTS.md`](composeApp/AGENTS.md)
 - Backend implementation state and server-specific guidance: [`server/AGENTS.md`](server/AGENTS.md)
 
