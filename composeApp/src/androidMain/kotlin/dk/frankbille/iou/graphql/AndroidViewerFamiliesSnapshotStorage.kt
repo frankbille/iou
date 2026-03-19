@@ -9,6 +9,10 @@ internal object AndroidAppContextHolder {
 
 private const val SNAPSHOT_FILENAME = "viewer-families.snapshot"
 
+fun initializeAndroidAppContext(context: Context) {
+    AndroidAppContextHolder.applicationContext = context
+}
+
 internal actual class ViewerSnapshotStorage {
     actual fun load(): PersistedViewerSnapshot? =
         snapshotFile()

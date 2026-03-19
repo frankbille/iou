@@ -30,7 +30,7 @@ IOU is still in very early development, not even alpha. The domain and API surfa
 
 ## 🛠️ Tech Direction
 
-Technically, this is a Kotlin-based multi-module project. The backend lives in `server/` and uses Spring Boot, GraphQL, JPA, Liquibase, and MySQL-oriented testing infrastructure. The client side is being set up as a Kotlin Multiplatform application with Compose Multiplatform in `composeApp/`, shared code in `shared/`, and an iOS host app in `iosApp/`.
+Technically, this is a Kotlin-based multi-module project. The backend lives in `server/` and uses Spring Boot, GraphQL, JPA, Liquibase, and MySQL-oriented testing infrastructure. The client side is being set up as a Kotlin Multiplatform shared UI/domain module in `composeApp/`, an Android host app in `androidApp/`, shared code in `shared/`, and an iOS host app in `iosApp/`.
 
 The overall direction is a single product that can span platforms while sharing domain logic where it makes sense. At the moment, the backend domain model is further along than the user-facing app.
 
