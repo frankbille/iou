@@ -20,7 +20,7 @@ material3 = "1.10.0-alpha05"
 p6spySpringBootStarter = "2.0.0"
 springBoot = "4.0.3"
 springDependencyManagement = "1.1.7"
-spotless = "8.3.0"
+spotless = "8.4.0"
 
 [libraries]
 # Frontend
